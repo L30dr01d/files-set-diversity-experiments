@@ -6,6 +6,7 @@ from experiment_runner.score_per_measure import (
     plot_scores,
     run_score_per_measure,
 )
+from experiment_runner.timeout import hang_score
 
 
 def test_measure_dataset_times_injected_score(tmp_path: Path) -> None:
@@ -14,6 +15,35 @@ def test_measure_dataset_times_injected_score(tmp_path: Path) -> None:
         tmp_path, score_fn=lambda path: 0.4, monotonic=lambda: next(ticks)
     )
     assert measured == {"value": 0.4, "seconds": 0.25}
+
+
+def test_measure_dataset_timeout_returns_null(tmp_path: Path) -> None:
+    measured = measure_dataset(tmp_path, score_fn=hang_score, timeout=0.5)
+    assert measured["value"] is None
+    assert measured["seconds"] >= 0.5
+
+
+def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "repo"
+    dataset = root / "datasets" / "ds_one"
+    dataset.mkdir(parents=True)
+    (dataset / "a.txt").write_text("a")
+    experiment = Experiment(
+        id="ex1",
+        type="score_per_measure",
+        title="Viewer title",
+        datasets=("ds_one",),
+        tools=("hang-metric",),
+    )
+    run_score_per_measure(
+        experiment,
+        root,
+        score_fns={"hang-metric": hang_score},
+        timeout=0.5,
+        output_dir=tmp_path / "output",
+    )
+    out = capsys.readouterr().out
+    assert "null" in out
 
 
 def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
@@ -111,5 +141,32 @@ def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> Non
             assert [text.get_text() for text in ax.texts] == [
                 f"{value:.6f}" for value in expected
             ]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_annotates_null_and_skips_timed_out_point() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    experiment = Experiment(
+        id="ex1",
+        type="score_per_measure",
+        title="Viewer title",
+        datasets=("ds_one", "ds_two"),
+        tools=("fake-metric",),
+    )
+    results = {
+        "ds_one": {"fake-metric": {"value": 0.25, "seconds": 1.0}},
+        "ds_two": {"fake-metric": {"value": None, "seconds": 1200.0}},
+    }
+    fig = plot_scores(results, experiment)
+    try:
+        ax = fig.axes[0]
+        assert ax.collections[0].get_offsets().tolist() == [[0.0, 0.25]]
+        assert "null" in [text.get_text() for text in ax.texts]
+        assert "0.250000" in [text.get_text() for text in ax.texts]
     finally:
         plt.close(fig)

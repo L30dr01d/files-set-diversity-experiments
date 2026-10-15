@@ -6,8 +6,15 @@ from pathlib import Path
 
 from experiment_runner.config import Experiment
 from experiment_runner.paths import dataset_dir, load_score
+from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_score
 
 ScoreFn = Callable[[Path], float]
+
+
+def _format_cell(value: object, precision: int) -> str:
+    if value is None:
+        return f"{'null':>16}"
+    return f"{float(value):>16.{precision}f}"
 
 
 def measure_dataset(
@@ -15,10 +22,11 @@ def measure_dataset(
     *,
     score_fn: ScoreFn,
     monotonic=None,
+    timeout: float = SCORE_TIMEOUT_SECONDS,
 ) -> dict:
     clock = monotonic or time.monotonic
     t0 = clock()
-    value = float(score_fn(files_dir))
+    value = call_score(score_fn, files_dir, timeout=timeout)
     elapsed = clock() - t0
     return {"value": value, "seconds": float(elapsed)}
 
@@ -29,6 +37,7 @@ def run_score_per_measure(
     *,
     score_fns: Mapping[str, ScoreFn] | None = None,
     monotonic=None,
+    timeout: float = SCORE_TIMEOUT_SECONDS,
     output_dir: Path,
 ) -> dict:
     if score_fns is None:
@@ -39,7 +48,7 @@ def run_score_per_measure(
         results[name] = {}
         for tool, score_fn in score_fns.items():
             results[name][tool] = measure_dataset(
-                files_dir, score_fn=score_fn, monotonic=monotonic
+                files_dir, score_fn=score_fn, monotonic=monotonic, timeout=timeout
             )
 
     label_width = max(len("Dataset"), *(len(name) for name in experiment.datasets))
@@ -56,7 +65,7 @@ def run_score_per_measure(
             print(
                 f"{name:<{label_width}}  "
                 + "  ".join(
-                    f"{measurements[tool][field]:>16.{precision}f}" for tool in score_fns
+                    _format_cell(measurements[tool][field], precision) for tool in score_fns
                 )
             )
         print()
@@ -89,17 +98,34 @@ def plot_scores(results: dict, experiment: Experiment):
     fig.suptitle(experiment.title)
     colors = [f"C{i}" for i in range(len(labels))]
     for ax, tool in zip(axes[0], tools):
-        values = [results[label][tool]["value"] for label in labels]
-        ax.scatter(range(len(labels)), values, c=colors, s=70, zorder=3)
-        for x, value in enumerate(values):
+        xs: list[float] = []
+        ys: list[float] = []
+        point_colors: list[str] = []
+        for x, label in enumerate(labels):
+            value = results[label][tool]["value"]
+            if value is None:
+                ax.annotate(
+                    "null",
+                    (x, 0.0),
+                    xytext=(0, 10),
+                    textcoords="offset points",
+                    ha="center",
+                    fontsize=9,
+                )
+                continue
+            xs.append(float(x))
+            ys.append(float(value))
+            point_colors.append(colors[x])
             ax.annotate(
-                f"{value:.6f}",
+                f"{float(value):.6f}",
                 (x, value),
                 xytext=(0, 10),
                 textcoords="offset points",
                 ha="center",
                 fontsize=9,
             )
+        if xs:
+            ax.scatter(xs, ys, c=point_colors, s=70, zorder=3)
         ax.set_xticks(
             range(len(labels)),
             labels,

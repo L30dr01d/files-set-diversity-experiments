@@ -9,4 +9,6 @@ uv run python -m experiment_runner matrix
 uv run python -m experiment_runner run algo_similar_vs_diverse
 ```
 
-`score_per_measure` writes `output/<id>.png`. Panhard needs `xz` and `bc` on PATH.
+Panhard needs `xz` and `bc` on PATH.
+
+Each metric call is killed after 20 minutes and recorded as `null`. Other datasets and metrics still run.

@@ -3,13 +3,85 @@
     {
       "id": "algo_similar_vs_diverse",
       "type": "score_per_measure",
-      "title": "Algorithm datasets: similar variants vs diverse tasks",
+      "title": "Java problem solutions",
       "datasets": [
         "016_algos_java_1_task_10_variants_10",
         "022_algos_5_tasks_3_variants_15",
         "023_algos_10_tasks_3_variants_30",
         "015_algos_java_10_tasks_1_variant_10",
         "024_algos_15_tasks_1_variants_15"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "different_sv_sets",
+      "type": "score_per_measure",
+      "title": "Different sv sets",
+      "datasets": [
+        "001_random_sv_50",
+        "002_caesar_001_50",
+        "003_different_sv_subjective_50",
+        "004_similar_sv_subjective_50"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "different_content_sets",
+      "type": "score_per_measure",
+      "title": "Different content sets",
+      "datasets": [
+        "005_random_sv_50",
+        "006_random_otk_50",
+        "007_algos_java_5_tasks_10_variants_50",
+        "008_duplicates_sv_25x2_50"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "different_content_sets_big",
+      "type": "score_per_measure",
+      "title": "Different content sets big",
+      "datasets": [
+        "009_random_sv_150",
+        "010_algos_java_15_tasks_10_variants_150",
+        "011_duplicates_sv_75x2_150",
+        "013_random_vhdl_150",
+        "014_random_otk_150"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "small_vs_big_sets",
+      "type": "score_per_measure",
+      "title": "Small vs big sets",
+      "datasets": [
+        "001_random_sv_50",
+        "018_duplicates_001_sv_100",
+        "003_different_sv_subjective_50",
+        "017_different_sv_cut_from_003_10",
+        "004_similar_sv_subjective_50",
+        "020_similar_sv_cut_from_004_10",
+        "021_duplicates_sv_5x2_cut_from_004_10"
       ],
       "tools": [
         "panhard-v3-metric",
