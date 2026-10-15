@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast-filter"
+version = "0.1.0"
+description = "Inadequate FAST-R reduction of a directory of test files."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+fastr = ["fast-r @ git+https://github.com/L3odr0id/FAST-R.git ; python_full_version >= '3.14'"]
+
+[project.scripts]
+fast-filter = "fast_filter.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

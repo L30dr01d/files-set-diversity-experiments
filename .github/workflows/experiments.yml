@@ -1,0 +1,60 @@
+name: Experiments
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}@${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  matrix:
+    name: Generate matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync
+      - id: generate
+        run: |
+          {
+            echo 'matrix<<EOF'
+            uv run python -m experiment_runner matrix
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+
+  experiment:
+    name: ${{ matrix.id }}
+    needs: matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: sudo apt-get update && sudo apt-get install -y bc
+      - run: uv sync
+      - run: uv run python -m experiment_runner run ${{ matrix.id }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.id }}
+          path: output/${{ matrix.id }}.png
+          if-no-files-found: error

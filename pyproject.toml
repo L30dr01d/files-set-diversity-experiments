@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ci-experiments"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8",
+    "matplotlib>=3.8",
+    "poisson-metric",
+    "ncd1-metric",
+    "levassor-metric",
+    "fast-filter",
+    "random-filter",
+    "panhard-v3-metric",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv.workspace]
+members = ["tools/*"]
+
+[tool.uv.sources]
+poisson-metric = { workspace = true }
+ncd1-metric = { workspace = true }
+levassor-metric = { workspace = true }
+fast-filter = { workspace = true }
+random-filter = { workspace = true }
+panhard-v3-metric = { workspace = true }
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["tests", "tools"]

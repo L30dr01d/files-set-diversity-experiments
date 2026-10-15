@@ -1,0 +1,22 @@
+{
+  "experiments": [
+    {
+      "id": "algo_similar_vs_diverse",
+      "type": "score_per_measure",
+      "title": "Algorithm datasets: similar variants vs diverse tasks",
+      "datasets": [
+        "016_algos_java_1_task_10_variants_10",
+        "022_algos_5_tasks_3_variants_15",
+        "023_algos_10_tasks_3_variants_30",
+        "015_algos_java_10_tasks_1_variant_10",
+        "024_algos_15_tasks_1_variants_15"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    }
+  ]
+}

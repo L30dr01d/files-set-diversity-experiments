@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# COPIED FROM https://github.com/buzden/idris2-ncd-xz/blob/737f95dac8e0800e6fd098990213388c567be71c/panhard-xz
+
+if ! xz --version > /dev/null 2> /dev/null; then
+  echo "Cannot find \`xz\` command" >&2
+  exit 2
+fi
+
+usage() {
+  echo "Usage: $0 <files> ..." >&2
+  exit 3
+}
+
+fileExists() {
+  if [ ! -r "$1" ]; then
+    echo "Argument \"$1\" must be a readable file" >&2
+    exit 4
+  fi
+}
+
+# Prints a count of bytes of a compressed files
+compSize() {
+  cat "$@" | xz --format=raw --compress --stdout --no-warn --quiet | wc -c
+}
+
+FILES_COUNT="$#"
+
+if [ "$FILES_COUNT" == "0" ] || [ "$FILES_COUNT" == "1" ] && [ "$1" == "--help" ]; then
+  usage
+fi
+
+FILES=("$@")
+
+for file in "${FILES[@]}"; do
+  fileExists "$file" || exit
+done
+
+individual_lens_sum=0
+for file in "${FILES[@]}"; do
+  individual_len="$(compSize "$file")"
+  individual_lens_sum="$((individual_lens_sum + individual_len))"
+done
+
+all_lens="$(compSize "${FILES[@]}")"
+
+relative_lens_sum=0
+for ((oi = 0; oi < FILES_COUNT && FILES_COUNT > 1; ++oi)); do
+
+  files_but_one=()
+  if ((oi >= 1)); then
+    files_but_one+=("${FILES[@]::$oi}")
+  fi
+  if ((oi + 1 < FILES_COUNT)); then
+    files_but_one+=("${FILES[@]:(($oi + 1))}")
+  fi
+
+  all_but_one_lens="$(compSize "${files_but_one[@]}")"
+  relative_lens="$((all_lens - all_but_one_lens))"
+  relative_lens_sum="$((relative_lens_sum + relative_lens))"
+done
+
+echo "
+scale=10
+$relative_lens_sum / $individual_lens_sum
+" | bc
