@@ -134,7 +134,7 @@ def plot_scores(results: dict, experiment: Experiment):
             fontsize=9,
         )
         ax.set(title=tool, xlabel="Dataset", ylabel="Score")
-        ax.set_ylim(0.0, 1.0)
-        ax.margins(x=0.15, y=0.25)
+        ax.set_ylim(0.0, 1.18)
+        ax.margins(x=0.15)
         ax.grid(axis="y", alpha=0.3)
     return fig

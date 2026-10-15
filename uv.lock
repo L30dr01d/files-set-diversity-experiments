@@ -33,9 +33,15 @@ dependencies = [
     { name = "random-filter" },
 ]
 
+[package.optional-dependencies]
+fastr = [
+    { name = "fast-filter", extra = ["fastr"] },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fast-filter", editable = "tools/fast-filter" },
+    { name = "fast-filter", extras = ["fastr"], marker = "extra == 'fastr'", editable = "tools/fast-filter" },
     { name = "levassor-metric", editable = "tools/levassor-metric" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "ncd1-metric", editable = "tools/ncd1-metric" },
@@ -44,6 +50,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=8" },
     { name = "random-filter", editable = "tools/random-filter" },
 ]
+provides-extras = ["fastr"]
 
 [[package]]
 name = "cloudpickle"

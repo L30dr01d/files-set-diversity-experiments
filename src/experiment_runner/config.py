@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-KNOWN_TYPES = frozenset({"score_per_measure"})
+KNOWN_TYPES = frozenset({"score_per_measure", "measure_per_set", "score_for_fastr"})
 
 
 class ConfigError(ValueError):

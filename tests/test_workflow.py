@@ -13,3 +13,9 @@ def test_workflow_uses_matrix_output_and_uploads_png():
     assert "contents: read" in TEXT
     assert "fail-fast: false" in TEXT
     assert "workflow_dispatch" in TEXT
+
+
+def test_workflow_uses_python_3_14_and_fastr_extra():
+    assert 'python-version: "3.14"' in TEXT
+    assert "python-version: \"3.13\"" not in TEXT
+    assert "uv sync --extra fastr" in TEXT

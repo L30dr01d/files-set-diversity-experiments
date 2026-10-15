@@ -18,8 +18,10 @@ def _write(path: Path, payload: object) -> Path:
     return path
 
 
-def test_known_types_only_score_per_measure():
-    assert KNOWN_TYPES == frozenset({"score_per_measure"})
+def test_known_types_include_three_experiment_types():
+    assert KNOWN_TYPES == frozenset(
+        {"score_per_measure", "measure_per_set", "score_for_fastr"}
+    )
 
 
 def test_load_experiments_reads_fields(tmp_path: Path):
@@ -97,6 +99,32 @@ def test_empty_datasets_raises(tmp_path: Path):
     )
     with pytest.raises(ConfigError, match="datasets"):
         load_experiments(tmp_path / "experiments.json")
+
+
+def test_load_experiments_accepts_new_types(tmp_path: Path):
+    _write(
+        tmp_path / "experiments.json",
+        {
+            "experiments": [
+                {
+                    "id": "bars",
+                    "type": "measure_per_set",
+                    "title": "Bars",
+                    "datasets": ["ds-a"],
+                    "tools": ["levassor-metric"],
+                },
+                {
+                    "id": "fastr",
+                    "type": "score_for_fastr",
+                    "title": "Fastr",
+                    "datasets": ["ds-a"],
+                    "tools": ["levassor-metric"],
+                },
+            ]
+        },
+    )
+    loaded = load_experiments(tmp_path / "experiments.json")
+    assert [exp.type for exp in loaded] == ["measure_per_set", "score_for_fastr"]
 
 
 def test_unknown_type_raises(tmp_path: Path):

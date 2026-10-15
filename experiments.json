@@ -54,7 +54,7 @@
     },
     {
       "id": "different_content_sets_big",
-      "type": "score_per_measure",
+      "type": "measure_per_set",
       "title": "Different content sets big",
       "datasets": [
         "009_random_sv_150",
@@ -82,6 +82,101 @@
         "004_similar_sv_subjective_50",
         "020_similar_sv_cut_from_004_10",
         "021_duplicates_sv_5x2_cut_from_004_10"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "super_random_3",
+      "type": "measure_per_set",
+      "title": "Super random set",
+      "datasets": [
+        "025_3_super_random_3"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "otk_1000_time",
+      "type": "measure_per_set",
+      "title": "OTK 1000 time",
+      "datasets": [
+        "019_otk_1000"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "dataset_time",
+      "type": "measure_per_set",
+      "title": "Real dataset time",
+      "datasets": [
+        "026_generated_files_56000"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "score_fast_dataset_levassor",
+      "type": "score_for_fastr",
+      "title": "Real dataset filter by fastr + levassor scoring",
+      "datasets": [
+        "026_generated_files_56000"
+      ],
+      "tools": [
+        "levassor-metric"
+      ]
+    },
+    {
+      "id": "score_fast_otk_1000_levassor",
+      "type": "score_for_fastr",
+      "title": "otk filter by fastr + levassor scoring",
+      "datasets": [
+        "019_otk_1000"
+      ],
+      "tools": [
+        "levassor-metric"
+      ]
+    },
+    {
+      "id": "score_fast_duplicates_150_all",
+      "type": "score_for_fastr",
+      "title": "Duplicates filter by fastr + score by all",
+      "datasets": [
+        "011_duplicates_sv_75x2_150"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "one_file",
+      "type": "score_per_measure",
+      "title": "One file copied X times",
+      "datasets": [
+        "027_one_sv_file_25",
+        "028_one_sv_file_50",
+        "029_one_sv_file_75",
+        "030_one_sv_file_100"
       ],
       "tools": [
         "panhard-v3-metric",

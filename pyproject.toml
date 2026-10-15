@@ -17,6 +17,9 @@ dependencies = [
     "panhard-v3-metric",
 ]
 
+[project.optional-dependencies]
+fastr = ["fast-filter[fastr]"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

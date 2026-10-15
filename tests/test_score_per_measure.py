@@ -129,7 +129,7 @@ def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> Non
             assert ax.get_title() == tool
             assert ax.get_xlabel() == "Dataset"
             assert ax.get_ylabel() == "Score"
-            assert ax.get_ylim() == (0.0, 1.0)
+            assert ax.get_ylim() == (0.0, 1.18)
             assert [tick.get_text() for tick in ax.get_xticklabels()] == [
                 "ds_one",
                 "ds_two",
