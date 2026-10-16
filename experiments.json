@@ -126,9 +126,7 @@
         "026_generated_files_56000"
       ],
       "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
+        "levassor-measure"
       ]
     },
     {

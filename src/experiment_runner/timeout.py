@@ -9,6 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 SCORE_TIMEOUT_SECONDS = 20 * 60
+WORKER_MEMORY_BYTES = 4 * 1024 * 1024 * 1024
 
 ScoreFn = Callable[[Path], float]
 
@@ -36,12 +37,42 @@ def quick_score(_files_dir: Path) -> float:
     return 0.42
 
 
-def _invoke(fn: Callable, args: tuple):
-    return fn(*args)
+def kill_self(*_args) -> float:
+    import os
+    import signal
+
+    os.kill(os.getpid(), signal.SIGKILL)
+    return 0.0
 
 
 def _score_worker(score_fn: ScoreFn, path: str) -> float:
     return float(score_fn(Path(path)))
+
+
+def _apply_memory_cap(max_bytes: int | None) -> None:
+    if max_bytes is None:
+        return
+    try:
+        import resource
+    except ImportError:
+        return
+    try:
+        resource.setrlimit(resource.RLIMIT_AS, (max_bytes, max_bytes))
+    except (ValueError, OSError):
+        return
+
+
+def _run_worker(fn: Callable, args: tuple, conn, memory_bytes: int | None) -> None:
+    _apply_memory_cap(memory_bytes)
+    try:
+        conn.send(("ok", fn(*args)))
+    except Exception as exc:  # noqa: BLE001
+        try:
+            conn.send(("err", f"{type(exc).__name__}: {exc}"))
+        except Exception:  # noqa: BLE001
+            pass
+    finally:
+        conn.close()
 
 
 def _can_spawn(fn: Callable, args: tuple) -> bool:
@@ -64,6 +95,7 @@ def call_timed(
     args: tuple,
     *,
     timeout: float = SCORE_TIMEOUT_SECONDS,
+    memory_bytes: int | None = WORKER_MEMORY_BYTES,
 ):
     if not _can_spawn(fn, args):
         try:
@@ -72,19 +104,34 @@ def call_timed(
             print(f"warning: {exc}", file=sys.stderr)
             return None
     ctx = multiprocessing.get_context("spawn")
-    pool = ctx.Pool(1)
+    parent_conn, child_conn = ctx.Pipe(duplex=False)
+    proc = ctx.Process(
+        target=_run_worker,
+        args=(fn, args, child_conn, memory_bytes),
+    )
+    proc.start()
+    child_conn.close()
     try:
-        result = pool.apply_async(_invoke, (fn, args))
-        try:
-            return result.get(timeout=timeout)
-        except multiprocessing.TimeoutError:
+        proc.join(timeout)
+        if proc.is_alive():
+            proc.kill()
+            proc.join()
             return None
-        except Exception as exc:  # noqa: BLE001
-            print(f"warning: {exc}", file=sys.stderr)
+        if proc.exitcode not in (0, None):
+            print(f"warning: worker exited with code {proc.exitcode}", file=sys.stderr)
             return None
+        if not parent_conn.poll():
+            return None
+        status, payload = parent_conn.recv()
+        if status == "ok":
+            return payload
+        print(f"warning: {payload}", file=sys.stderr)
+        return None
     finally:
-        pool.terminate()
-        pool.join()
+        parent_conn.close()
+        if proc.is_alive():
+            proc.kill()
+            proc.join()
 
 
 def call_score(

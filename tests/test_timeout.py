@@ -1,12 +1,17 @@
-from multiprocessing.pool import Pool
+import time
 from pathlib import Path
 
-from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_score, hang_score, quick_score
+from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, WORKER_MEMORY_BYTES
+from experiment_runner.timeout import call_score, hang_score, kill_self, quick_score
 from experiment_runner.timeout import call_timed, hang_reduce, raise_score
 
 
 def test_timeout_constant_is_twenty_minutes():
     assert SCORE_TIMEOUT_SECONDS == 20 * 60
+
+
+def test_worker_memory_cap_is_four_gib():
+    assert WORKER_MEMORY_BYTES == 4 * 1024 * 1024 * 1024
 
 
 def test_call_score_returns_float_before_timeout(tmp_path: Path):
@@ -49,14 +54,10 @@ def test_call_score_returns_none_when_spawned_score_raises(tmp_path: Path, capsy
     assert "Argument list too long" in err
 
 
-def test_spawned_exception_terminates_the_pool(tmp_path: Path, monkeypatch):
-    calls: list[bool] = []
-    original = Pool.terminate
-
-    def wrapped(self):
-        calls.append(True)
-        return original(self)
-
-    monkeypatch.setattr(Pool, "terminate", wrapped)
-    assert call_score(raise_score, tmp_path, timeout=5) is None
-    assert calls, "pool.terminate was not called after worker exception"
+def test_call_timed_returns_none_quickly_when_worker_dies(capsys):
+    t0 = time.monotonic()
+    assert call_timed(kill_self, (), timeout=8) is None
+    assert time.monotonic() - t0 < 3
+    err = capsys.readouterr().err
+    assert "warning:" in err
+    assert "worker exited" in err
