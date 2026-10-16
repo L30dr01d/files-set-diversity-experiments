@@ -248,6 +248,7 @@ def test_step_zero_is_the_initial_score_at_100_percent(tmp_path: Path):
     assert step.score == 1.0
     assert step.remaining_count == 6
     assert step.remaining_pct == 100.0
+    assert step.remaining == tuple(paths)
 
 
 def test_committed_shrink_appends_a_step_against_original_n(tmp_path: Path):
@@ -308,3 +309,19 @@ def test_constant_score_records_each_accepted_probe(tmp_path: Path):
     assert [step.index for step in result.steps] == list(range(len(result.steps)))
     assert result.steps[-1].remaining_count == len(result.kept)
     assert result.steps[-1].remaining_pct == 100.0 * len(result.kept) / 100
+    for step in result.steps:
+        assert len(step.remaining) == step.remaining_count
+    assert [p.name for p in result.steps[-1].remaining] == [p.name for p in result.kept]
+
+
+def test_remaining_is_a_snapshot_of_the_committed_set(tmp_path: Path):
+    paths = _files(tmp_path, 6)
+
+    def metric(_directory: Path) -> float:
+        return 1.0
+
+    result = filter_subset(paths, metric, min_keep=3, rng=Random(0))
+    first = result.steps[0].remaining
+    result.kept.append(paths[0])
+    assert result.steps[0].remaining == first
+    assert result.steps[0].remaining == tuple(paths)

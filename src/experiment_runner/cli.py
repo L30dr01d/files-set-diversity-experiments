@@ -9,6 +9,7 @@ from pathlib import Path
 from experiment_runner.config import ConfigError, Experiment, load_config
 from experiment_runner.measure_per_set import run_measure_per_set
 from experiment_runner.score_for_fastr import run_score_for_fastr
+from experiment_runner.score_for_random_filter import run_score_for_random_filter
 from experiment_runner.score_per_measure import run_score_per_measure
 
 
@@ -47,6 +48,9 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             return 0
         if match.type == "score_for_fastr":
             run_score_for_fastr(match, root, output_dir=root / "output")
+            return 0
+        if match.type == "score_for_random_filter":
+            run_score_for_random_filter(match, root, output_dir=root / "output")
             return 0
         raise ConfigError(f"unknown type: {match.type}")
     except Exception as exc:  # noqa: BLE001

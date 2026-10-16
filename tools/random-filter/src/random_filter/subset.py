@@ -14,6 +14,7 @@ class SubsetStep:
     score: float
     remaining_count: int
     remaining_pct: float
+    remaining: tuple[Path, ...]
 
 
 @dataclass(frozen=True)
@@ -36,14 +37,16 @@ def _append_step(
     *,
     n_input: int,
     score: float,
-    remaining_count: int,
+    remaining: Sequence[Path],
 ) -> None:
+    remaining_tuple = tuple(remaining)
     steps.append(
         SubsetStep(
             index=len(steps),
             score=score,
-            remaining_count=remaining_count,
-            remaining_pct=100.0 * remaining_count / n_input,
+            remaining_count=len(remaining_tuple),
+            remaining_pct=100.0 * len(remaining_tuple) / n_input,
+            remaining=remaining_tuple,
         )
     )
 
@@ -90,7 +93,7 @@ def _search(
                     steps,
                     n_input=n_input,
                     score=new,
-                    remaining_count=len(remaining),
+                    remaining=remaining,
                 )
                 break
         if accepted:
@@ -118,7 +121,7 @@ def filter_subset(
     n_input = len(current)
     old = score_paths(current, metric)
     steps: list[SubsetStep] = []
-    _append_step(steps, n_input=n_input, score=old, remaining_count=n_input)
+    _append_step(steps, n_input=n_input, score=old, remaining=current)
     last_removed = [-1]
     while True:
         nxt, new_score = _search(

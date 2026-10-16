@@ -184,6 +184,48 @@
         "poisson-metric",
         "ncd1-metric"
       ]
+    },
+    {
+      "id": "dataset_random_filter_levassor_measure",
+      "type": "score_for_random_filter",
+      "title": "Dataset filtered by random filter + levassor measure",
+      "datasets": [
+        "026_generated_files_56000"
+      ],
+      "tools": [
+        "levassor-metric",
+        "panhard-v3-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "150_sv_random_filter_levassor_measure",
+      "type": "score_for_random_filter",
+      "title": "150 sv files filtered by random filter + levassor measure",
+      "datasets": [
+        "009_random_sv_150"
+      ],
+      "tools": [
+        "levassor-metric",
+        "panhard-v3-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
+    },
+    {
+      "id": "150_sv_random_filter_panhard_measure",
+      "type": "score_for_random_filter",
+      "title": "150 sv files filtered by random filter + panhard measure",
+      "datasets": [
+        "009_random_sv_150"
+      ],
+      "tools": [
+        "panhard-v3-metric",
+        "levassor-metric",
+        "poisson-metric",
+        "ncd1-metric"
+      ]
     }
   ]
 }

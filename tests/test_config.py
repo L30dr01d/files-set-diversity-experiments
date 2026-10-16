@@ -18,9 +18,14 @@ def _write(path: Path, payload: object) -> Path:
     return path
 
 
-def test_known_types_include_three_experiment_types():
+def test_known_types_include_four_experiment_types():
     assert KNOWN_TYPES == frozenset(
-        {"score_per_measure", "measure_per_set", "score_for_fastr"}
+        {
+            "score_per_measure",
+            "measure_per_set",
+            "score_for_fastr",
+            "score_for_random_filter",
+        }
     )
 
 
@@ -120,11 +125,22 @@ def test_load_experiments_accepts_new_types(tmp_path: Path):
                     "datasets": ["ds-a"],
                     "tools": ["levassor-metric"],
                 },
+                {
+                    "id": "rand",
+                    "type": "score_for_random_filter",
+                    "title": "Random filter",
+                    "datasets": ["ds-a"],
+                    "tools": ["levassor-metric"],
+                },
             ]
         },
     )
     loaded = load_experiments(tmp_path / "experiments.json")
-    assert [exp.type for exp in loaded] == ["measure_per_set", "score_for_fastr"]
+    assert [exp.type for exp in loaded] == [
+        "measure_per_set",
+        "score_for_fastr",
+        "score_for_random_filter",
+    ]
 
 
 def test_unknown_type_raises(tmp_path: Path):

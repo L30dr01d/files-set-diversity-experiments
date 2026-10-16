@@ -23,6 +23,11 @@ def hang_reduce(_files_dir: Path, _algo: str, _pct: float) -> list[str]:
     return ["x"]
 
 
+def hang_filter(paths, metric, *, relative_eps, max_tries, min_keep, rng):
+    time.sleep(10_000)
+    return None
+
+
 def raise_score(_files_dir: Path) -> float:
     raise OSError(7, "Argument list too long")
 

@@ -136,3 +136,40 @@ def test_run_dispatches_score_for_fastr(tmp_path: Path, monkeypatch):
     assert main(["run", "fastr"], root=root) == 0
     assert called["type"] == "score_for_fastr"
     assert (root / "output" / "fastr.png").is_file()
+
+
+def test_run_dispatches_score_for_random_filter(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    (root / "datasets" / "ds_one").mkdir(parents=True)
+    (root / "tools" / "fake-metric").mkdir(parents=True)
+    (root / "datasets" / "ds_one" / "a.txt").write_text("a")
+    (root / "experiments.json").write_text(
+        json.dumps(
+            {
+                "experiments": [
+                    {
+                        "id": "rand",
+                        "type": "score_for_random_filter",
+                        "title": "t",
+                        "datasets": ["ds_one"],
+                        "tools": ["fake-metric"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    called = {}
+
+    def fake_run(experiment, _root, *, output_dir, **_kwargs):
+        called["type"] = experiment.type
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / f"{experiment.id}.png").write_bytes(b"png")
+        return {}
+
+    monkeypatch.setattr(
+        "experiment_runner.cli.run_score_for_random_filter", fake_run
+    )
+    assert main(["run", "rand"], root=root) == 0
+    assert called["type"] == "score_for_random_filter"
+    assert (root / "output" / "rand.png").is_file()
