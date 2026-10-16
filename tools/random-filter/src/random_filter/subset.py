@@ -54,7 +54,7 @@ def _append_step(
 def _search(
     start: list[Path],
     old: float,
-    metric: Callable[[Path], float],
+    measure: Callable[[Path], float],
     *,
     relative_eps: float,
     max_tries: int,
@@ -83,7 +83,7 @@ def _search(
         for _attempt in range(max_tries):
             sample = set(rng.sample(start, num))
             remaining = [path for path in start if path not in sample]
-            new = score_paths(remaining, metric)
+            new = score_paths(remaining, measure)
             if old - new <= relative_eps * old:
                 tmp = remaining
                 tmp_score = new
@@ -105,7 +105,7 @@ def _search(
 
 def filter_subset(
     files: Sequence[Path],
-    metric: Callable[[Path], float],
+    measure: Callable[[Path], float],
     *,
     relative_eps: float = 1e-5,
     max_tries: int = 10,
@@ -119,7 +119,7 @@ def filter_subset(
     if len(current) <= min_keep:
         return SubsetResult(kept=current, steps=[])
     n_input = len(current)
-    old = score_paths(current, metric)
+    old = score_paths(current, measure)
     steps: list[SubsetStep] = []
     _append_step(steps, n_input=n_input, score=old, remaining=current)
     last_removed = [-1]
@@ -127,7 +127,7 @@ def filter_subset(
         nxt, new_score = _search(
             current,
             old,
-            metric,
+            measure,
             relative_eps=relative_eps,
             max_tries=max_tries,
             min_keep=min_keep,

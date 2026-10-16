@@ -24,7 +24,7 @@ def _experiment(*datasets: str) -> Experiment:
         type="score_for_fastr",
         title="Viewer title",
         datasets=datasets,
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
 
 
@@ -54,8 +54,8 @@ def test_one_hundred_percent_skips_reduce(tmp_path: Path) -> None:
         _experiment("ds_one"),
         root,
         score_fns={
-            "fake-metric": lambda path: 0.2,
-            "other-metric": lambda path: 0.3,
+            "fake-measure": lambda path: 0.2,
+            "other-measure": lambda path: 0.3,
         },
         reduce_fn=counting_reduce,
         output_dir=tmp_path / "output",
@@ -77,8 +77,8 @@ def test_reduce_once_per_dataset_algo_percent(tmp_path: Path) -> None:
         _experiment("ds_one", "ds_two"),
         root,
         score_fns={
-            "fake-metric": lambda path: 0.2,
-            "other-metric": lambda path: 0.3,
+            "fake-measure": lambda path: 0.2,
+            "other-measure": lambda path: 0.3,
         },
         reduce_fn=counting_reduce,
         output_dir=tmp_path / "output",
@@ -99,8 +99,8 @@ def test_run_writes_png_and_scores_one_hundred(tmp_path: Path) -> None:
         _experiment("ds_one"),
         root,
         score_fns={
-            "fake-metric": lambda path: 0.4,
-            "other-metric": lambda path: 0.5,
+            "fake-measure": lambda path: 0.4,
+            "other-measure": lambda path: 0.5,
         },
         reduce_fn=fake_reduce,
         output_dir=tmp_path / "output",
@@ -111,8 +111,8 @@ def test_run_writes_png_and_scores_one_hundred(tmp_path: Path) -> None:
     entry = result["ds_one"]["FAST++"][100]
     assert entry["kept_count"] == 20
     assert entry["reduce_seconds"] is None
-    assert entry["metrics"]["fake-metric"]["value"] == 0.4
-    assert entry["metrics"]["other-metric"]["value"] == 0.5
+    assert entry["measures"]["fake-measure"]["value"] == 0.4
+    assert entry["measures"]["other-measure"]["value"] == 0.5
 
 
 def test_reduce_timeout_skips_score(tmp_path: Path) -> None:
@@ -130,17 +130,17 @@ def test_reduce_timeout_skips_score(tmp_path: Path) -> None:
             type="score_for_fastr",
             title="Viewer title",
             datasets=("ds_one",),
-            tools=("fake-metric",),
+            tools=("fake-measure",),
         ),
         root,
-        score_fns={"fake-metric": counting_score},
+        score_fns={"fake-measure": counting_score},
         reduce_fn=hang_reduce,
         timeout=0.5,
         output_dir=tmp_path / "output",
     )
     timed = result["ds_one"]["FAST++"][95]
     assert timed["kept_count"] is None
-    assert timed["metrics"]["fake-metric"]["value"] is None
+    assert timed["measures"]["fake-measure"]["value"] is None
     # 100% still scores the source dir once per algo
     assert len(score_calls) == 2
 
@@ -159,9 +159,9 @@ def test_plot_grid_titles_ylim_and_nan_break() -> None:
             pct: {
                 "kept_count": 1,
                 "reduce_seconds": None,
-                "metrics": {
-                    "fake-metric": {"value": value, "seconds": 0.0},
-                    "other-metric": {"value": None if pct == 50 else value, "seconds": 0.0},
+                "measures": {
+                    "fake-measure": {"value": value, "seconds": 0.0},
+                    "other-measure": {"value": None if pct == 50 else value, "seconds": 0.0},
                 },
             }
             for pct in BUDGET_PCTS
@@ -206,12 +206,12 @@ def test_score_timeout_is_null(tmp_path: Path) -> None:
             type="score_for_fastr",
             title="t",
             datasets=("ds_one",),
-            tools=("hang-metric",),
+            tools=("hang-measure",),
         ),
         root,
-        score_fns={"hang-metric": hang_score},
+        score_fns={"hang-measure": hang_score},
         reduce_fn=fake_reduce,
         timeout=0.5,
         output_dir=tmp_path / "output",
     )
-    assert result["ds_one"]["FAST++"][100]["metrics"]["hang-metric"]["value"] is None
+    assert result["ds_one"]["FAST++"][100]["measures"]["hang-measure"]["value"] is None

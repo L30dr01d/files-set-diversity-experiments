@@ -39,7 +39,7 @@ def test_load_experiments_reads_fields(tmp_path: Path):
                     "type": "score_per_measure",
                     "title": "Hello viewers",
                     "datasets": ["016_algos_java_1_task_10_variants_10"],
-                    "tools": ["levassor-metric"],
+                    "tools": ["levassor-measure"],
                 }
             ]
         },
@@ -51,7 +51,7 @@ def test_load_experiments_reads_fields(tmp_path: Path):
             type="score_per_measure",
             title="Hello viewers",
             datasets=("016_algos_java_1_task_10_variants_10",),
-            tools=("levassor-metric",),
+            tools=("levassor-measure",),
         )
     ]
 
@@ -116,21 +116,21 @@ def test_load_experiments_accepts_new_types(tmp_path: Path):
                     "type": "measure_per_set",
                     "title": "Bars",
                     "datasets": ["ds-a"],
-                    "tools": ["levassor-metric"],
+                    "tools": ["levassor-measure"],
                 },
                 {
                     "id": "fastr",
                     "type": "score_for_fastr",
                     "title": "Fastr",
                     "datasets": ["ds-a"],
-                    "tools": ["levassor-metric"],
+                    "tools": ["levassor-measure"],
                 },
                 {
                     "id": "rand",
                     "type": "score_for_random_filter",
                     "title": "Random filter",
                     "datasets": ["ds-a"],
-                    "tools": ["levassor-metric"],
+                    "tools": ["levassor-measure"],
                 },
             ]
         },

@@ -47,7 +47,7 @@ def _default_reduce(files_dir: Path, algo: str, target_percent: float) -> list[s
     return reduce(files_dir, algo, target_percent)
 
 
-def _null_metrics(tools: tuple[str, ...]) -> dict:
+def _null_measures(tools: tuple[str, ...]) -> dict:
     return {tool: {"value": None, "seconds": 0.0} for tool in tools}
 
 
@@ -88,7 +88,7 @@ def run_score_for_fastr(
                         results[dataset_name][algo][pct] = {
                             "kept_count": None,
                             "reduce_seconds": reduce_seconds,
-                            "metrics": _null_metrics(tools),
+                            "measures": _null_measures(tools),
                         }
                         print(
                             f"{dataset_name} {algo} pct={pct} kept=null "
@@ -97,10 +97,10 @@ def run_score_for_fastr(
                         continue
                     names = list(kept)
                     in_place = False
-                metrics: dict = {}
+                measures: dict = {}
                 if in_place:
                     for tool, score_fn in score_fns.items():
-                        metrics[tool] = measure_dataset(
+                        measures[tool] = measure_dataset(
                             files_dir,
                             score_fn=score_fn,
                             monotonic=monotonic,
@@ -114,7 +114,7 @@ def run_score_for_fastr(
                         dest = Path(tmp) / "kept"
                         stage_kept(files_dir, names, dest)
                         for tool, score_fn in score_fns.items():
-                            metrics[tool] = measure_dataset(
+                            measures[tool] = measure_dataset(
                                 dest,
                                 score_fn=score_fn,
                                 monotonic=monotonic,
@@ -123,13 +123,13 @@ def run_score_for_fastr(
                 results[dataset_name][algo][pct] = {
                     "kept_count": len(names),
                     "reduce_seconds": reduce_seconds,
-                    "metrics": metrics,
+                    "measures": measures,
                 }
                 values = " ".join(
                     (
                         f"{tool}=null"
-                        if metrics[tool]["value"] is None
-                        else f"{tool}={metrics[tool]['value']:.6f}"
+                        if measures[tool]["value"] is None
+                        else f"{tool}={measures[tool]['value']:.6f}"
                     )
                     for tool in tools
                 )
@@ -176,7 +176,7 @@ def plot_budget_grid(results: dict, experiment: Experiment):
             for i, tool in enumerate(tools):
                 ys = []
                 for pct in BUDGET_PCTS:
-                    value = results[dataset][algo][pct]["metrics"][tool]["value"]
+                    value = results[dataset][algo][pct]["measures"][tool]["value"]
                     ys.append(float("nan") if value is None else float(value))
                 ax.plot(positions, ys, marker="o", color=f"C{i}", label=tool)
             ax.set_title(f"{dataset} — {algo}")

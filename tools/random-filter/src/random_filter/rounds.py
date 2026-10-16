@@ -56,7 +56,7 @@ def _chunks_in_input_order(files: Sequence[Path], order: list[Path], split_by: i
 
 def filter_rounds(
     files: Sequence[Path],
-    metric: Callable[[Path], float],
+    measure: Callable[[Path], float],
     *,
     rounds: int,
     split_by: int = 50,
@@ -96,7 +96,7 @@ def filter_rounds(
                 pool.submit(
                     filter_subset,
                     chunk,
-                    metric,
+                    measure,
                     relative_eps=relative_eps,
                     max_tries=max_tries,
                     min_keep=min_keep,

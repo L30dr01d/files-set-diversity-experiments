@@ -1,3 +1,4 @@
+import inspect
 from pathlib import Path
 from random import Random
 
@@ -35,11 +36,11 @@ def test_chunks_restore_input_order():
     assert chunks[1] == [files[0], files[2]]
 
 
-def test_empty_input_skips_the_metric():
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+def test_empty_input_skips_the_measure():
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
-    result = filter_rounds([], metric, rounds=1)
+    result = filter_rounds([], measure, rounds=1)
     assert result == FilterResult(kept=[], removal_counts={}, knees=[], rounds_finished=0)
 
 
@@ -61,20 +62,20 @@ def test_empty_input_still_validates_rounds():
         ({"stop_pct": -0.1}, "stop_pct must be >= 0"),
     ],
 )
-def test_invalid_arguments_do_not_call_metric(tmp_path: Path, kwargs: dict, match: str):
+def test_invalid_arguments_do_not_call_measure(tmp_path: Path, kwargs: dict, match: str):
     paths = _files(tmp_path, 1)
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     with pytest.raises(ValueError, match=match):
-        filter_rounds(paths, metric, **{"rounds": 1, **kwargs})
+        filter_rounds(paths, measure, **{"rounds": 1, **kwargs})
 
 
 def test_same_seed_is_repeatable(tmp_path: Path):
     paths = _files(tmp_path, 9)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return float(len(list(directory.iterdir())))
 
     kwargs = dict(
@@ -85,9 +86,9 @@ def test_same_seed_is_repeatable(tmp_path: Path):
         stop_pct=None,
         rng=Random(1),
     )
-    first = filter_rounds(paths, metric, **kwargs)
+    first = filter_rounds(paths, measure, **kwargs)
     kwargs["rng"] = Random(1)
-    second = filter_rounds(paths, metric, **kwargs)
+    second = filter_rounds(paths, measure, **kwargs)
     assert first == second
     assert list(first.removal_counts) == paths
 
@@ -95,7 +96,7 @@ def test_same_seed_is_repeatable(tmp_path: Path):
 def test_workers_match_the_single_thread_result(tmp_path: Path):
     paths = _files(tmp_path, 9)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return float(len(list(directory.iterdir())))
 
     common = dict(
@@ -105,20 +106,20 @@ def test_workers_match_the_single_thread_result(tmp_path: Path):
         relative_eps=0.2,
         stop_pct=None,
     )
-    one = filter_rounds(paths, metric, workers=1, rng=Random(2), **common)
-    two = filter_rounds(paths, metric, workers=2, rng=Random(2), **common)
+    one = filter_rounds(paths, measure, workers=1, rng=Random(2), **common)
+    two = filter_rounds(paths, measure, workers=2, rng=Random(2), **common)
     assert one == two
 
 
 def test_stop_pct_none_runs_every_round(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     result = filter_rounds(
         paths,
-        metric,
+        measure,
         rounds=4,
         split_by=2,
         min_keep=10,
@@ -134,13 +135,13 @@ def test_stable_knee_stops_after_min_stop_rounds(tmp_path: Path):
     snapshot = list(paths)
     calls = {"n": 0}
 
-    def metric(_directory: Path) -> float:
+    def measure(_directory: Path) -> float:
         calls["n"] += 1
         return 1.0
 
     result = filter_rounds(
         paths,
-        metric,
+        measure,
         rounds=30,
         split_by=2,
         min_keep=10,
@@ -167,8 +168,14 @@ def test_duplicate_names_inside_one_chunk_raise(tmp_path: Path):
     a.write_text("a", encoding="utf-8")
     b.write_text("b", encoding="utf-8")
 
-    def metric(_directory: Path) -> float:
+    def measure(_directory: Path) -> float:
         return 1.0
 
     with pytest.raises(ValueError, match="duplicate file name"):
-        filter_rounds([a, b], metric, rounds=1, split_by=10, min_keep=1, stop_pct=None)
+        filter_rounds([a, b], measure, rounds=1, split_by=10, min_keep=1, stop_pct=None)
+
+
+def test_filter_rounds_parameter_is_named_measure():
+    params = inspect.signature(filter_rounds).parameters
+    assert "measure" in params
+    assert "metric" not in params

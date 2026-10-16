@@ -2,8 +2,8 @@ import importlib
 import pytest
 
 
-def test_levassor_metric_imports_score():
-    from levassor_metric import score
+def test_levassor_measure_imports_score():
+    from levassor_measure import score
 
     assert callable(score)
 
@@ -11,6 +11,15 @@ def test_levassor_metric_imports_score():
 def test_new_metric_is_gone():
     with pytest.raises(ImportError):
         importlib.import_module("new_metric")
+
+
+@pytest.mark.parametrize(
+    "name",
+    ("levassor_metric", "poisson_metric", "ncd1_metric", "panhard_v3_metric"),
+)
+def test_old_measure_package_names_are_gone(name: str):
+    with pytest.raises(ImportError):
+        importlib.import_module(name)
 
 
 def test_fast_filter_imports_reduce():

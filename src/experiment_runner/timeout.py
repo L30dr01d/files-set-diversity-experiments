@@ -23,7 +23,7 @@ def hang_reduce(_files_dir: Path, _algo: str, _pct: float) -> list[str]:
     return ["x"]
 
 
-def hang_filter(paths, metric, *, relative_eps, max_tries, min_keep, rng):
+def hang_filter(paths, measure, *, relative_eps, max_tries, min_keep, rng):
     time.sleep(10_000)
     return None
 

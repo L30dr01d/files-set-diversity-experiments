@@ -117,7 +117,7 @@ def plot_bars(results: dict, experiment: Experiment):
             ax.bar(xs, heights, color=colors, width=0.85)
         ax.margins(x=0.2)
         ax.set_xticks(range(len(tools)), tools)
-        ax.set(title=dataset, xlabel="Metric", ylabel="Score")
+        ax.set(title=dataset, xlabel="Measure", ylabel="Score")
         ax.set_ylim(0.0, 1.18)
         ax.grid(axis="y", alpha=0.3)
     return fig

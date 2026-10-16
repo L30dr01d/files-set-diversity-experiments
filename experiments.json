@@ -12,10 +12,10 @@
         "024_algos_15_tasks_1_variants_15"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -29,10 +29,10 @@
         "004_similar_sv_subjective_50"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -46,10 +46,10 @@
         "008_duplicates_sv_25x2_50"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -64,10 +64,10 @@
         "014_random_otk_150"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -84,10 +84,10 @@
         "021_duplicates_sv_5x2_cut_from_004_10"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -98,10 +98,10 @@
         "025_3_super_random_3"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -112,10 +112,10 @@
         "019_otk_1000"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -126,10 +126,9 @@
         "026_generated_files_56000"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -140,7 +139,7 @@
         "026_generated_files_56000"
       ],
       "tools": [
-        "levassor-metric"
+        "levassor-measure"
       ]
     },
     {
@@ -151,7 +150,7 @@
         "019_otk_1000"
       ],
       "tools": [
-        "levassor-metric"
+        "levassor-measure"
       ]
     },
     {
@@ -162,10 +161,10 @@
         "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -179,10 +178,10 @@
         "030_one_sv_file_100"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -193,10 +192,7 @@
         "026_generated_files_56000"
       ],
       "tools": [
-        "levassor-metric",
-        "panhard-v3-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "levassor-measure"
       ]
     },
     {
@@ -204,13 +200,14 @@
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + levassor measure",
       "datasets": [
-        "009_random_sv_150"
+        "009_random_sv_150",
+        "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "levassor-metric",
-        "panhard-v3-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "levassor-measure",
+        "panhard-v3-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     },
     {
@@ -218,13 +215,14 @@
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + panhard measure",
       "datasets": [
-        "009_random_sv_150"
+        "009_random_sv_150",
+        "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "panhard-v3-metric",
-        "levassor-metric",
-        "poisson-metric",
-        "ncd1-metric"
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     }
   ]

@@ -1,3 +1,4 @@
+import inspect
 from pathlib import Path
 from random import Random
 
@@ -15,13 +16,13 @@ def _files(directory: Path, count: int) -> list[Path]:
     return paths
 
 
-def test_small_start_set_does_not_call_metric(tmp_path: Path):
+def test_small_start_set_does_not_call_measure(tmp_path: Path):
     paths = _files(tmp_path, 4)
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
-    result = filter_subset(paths, metric, min_keep=10)
+    result = filter_subset(paths, measure, min_keep=10)
     assert result.kept == paths
     assert result.kept is not paths
     assert result.steps == []
@@ -30,22 +31,22 @@ def test_small_start_set_does_not_call_metric(tmp_path: Path):
 def test_rejects_bad_subset_arguments(tmp_path: Path):
     paths = _files(tmp_path, 1)
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     with pytest.raises(ValueError, match="relative_eps must be >= 0"):
-        filter_subset(paths, metric, relative_eps=-0.1)
+        filter_subset(paths, measure, relative_eps=-0.1)
     with pytest.raises(ValueError, match="max_tries must be >= 1"):
-        filter_subset(paths, metric, max_tries=0)
+        filter_subset(paths, measure, max_tries=0)
     with pytest.raises(ValueError, match="min_keep must be >= 1"):
-        filter_subset(paths, metric, min_keep=0)
+        filter_subset(paths, measure, min_keep=0)
 
 
 def test_stages_symlinks_and_removes_the_temp_directory(tmp_path: Path):
     paths = _files(tmp_path, 4)
     seen: list[Path] = []
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         seen.append(directory)
         staged = list(directory.iterdir())
         for link in staged:
@@ -54,27 +55,27 @@ def test_stages_symlinks_and_removes_the_temp_directory(tmp_path: Path):
             assert link.read_bytes() == source.read_bytes()
         return 1.0 if len(staged) == len(paths) else 0.0
 
-    filter_subset(paths, metric, min_keep=3, relative_eps=1e-5)
+    filter_subset(paths, measure, min_keep=3, relative_eps=1e-5)
     assert seen
     assert all(not directory.exists() for directory in seen)
     for path in paths:
         assert path.read_text(encoding="utf-8").startswith("body-")
 
 
-def test_metric_exception_still_removes_the_temp_directory(tmp_path: Path):
+def test_measure_exception_still_removes_the_temp_directory(tmp_path: Path):
     paths = _files(tmp_path, 4)
     seen: list[Path] = []
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         seen.append(directory)
         raise RuntimeError("boom")
 
     with pytest.raises(RuntimeError, match="boom"):
-        filter_subset(paths, metric, min_keep=3)
+        filter_subset(paths, measure, min_keep=3)
     assert seen and not seen[0].exists()
 
 
-def test_duplicate_names_raise_before_metric(tmp_path: Path):
+def test_duplicate_names_raise_before_measure(tmp_path: Path):
     left = tmp_path / "left"
     right = tmp_path / "right"
     left.mkdir()
@@ -84,22 +85,22 @@ def test_duplicate_names_raise_before_metric(tmp_path: Path):
     a.write_text("a", encoding="utf-8")
     b.write_text("b", encoding="utf-8")
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     with pytest.raises(ValueError, match="duplicate file name"):
-        filter_subset([a, b], metric, min_keep=1)
+        filter_subset([a, b], measure, min_keep=1)
 
 
-def test_missing_path_raises_before_metric(tmp_path: Path):
+def test_missing_path_raises_before_measure(tmp_path: Path):
     good = tmp_path / "good.txt"
     good.write_text("ok", encoding="utf-8")
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     with pytest.raises(ValueError, match="not a file"):
-        filter_subset([good, tmp_path / "missing.txt"], metric, min_keep=1)
+        filter_subset([good, tmp_path / "missing.txt"], measure, min_keep=1)
 
 
 def test_directory_path_raises(tmp_path: Path):
@@ -108,11 +109,11 @@ def test_directory_path_raises(tmp_path: Path):
     nested = tmp_path / "nested"
     nested.mkdir()
 
-    def metric(_directory: Path) -> float:
-        raise AssertionError("metric should not be called")
+    def measure(_directory: Path) -> float:
+        raise AssertionError("measure should not be called")
 
     with pytest.raises(ValueError, match="not a file"):
-        filter_subset([good, nested], metric, min_keep=1)
+        filter_subset([good, nested], measure, min_keep=1)
 
 
 def test_symlink_to_a_file_is_scored(tmp_path: Path):
@@ -124,13 +125,13 @@ def test_symlink_to_a_file_is_scored(tmp_path: Path):
     other.write_text("other", encoding="utf-8")
     seen: list[bytes] = []
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         by_name = {path.name: path.read_bytes() for path in directory.iterdir()}
         if link.name in by_name:
             seen.append(by_name[link.name])
         return 1.0 if len(by_name) == 2 else 0.0
 
-    filter_subset([link, other], metric, min_keep=1, relative_eps=1e-5)
+    filter_subset([link, other], measure, min_keep=1, relative_eps=1e-5)
     assert seen[0] == b"via-link"
 
 
@@ -150,13 +151,13 @@ def test_constant_score_removes_down_to_min_keep(tmp_path: Path):
     paths = _files(tmp_path, 6)
     sizes: list[int] = []
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         size = len(list(directory.iterdir()))
         sizes.append(size)
         assert size >= 3
         return 1.0
 
-    kept = filter_subset(paths, metric, min_keep=3, rng=Random(0)).kept
+    kept = filter_subset(paths, measure, min_keep=3, rng=Random(0)).kept
     assert len(kept) == 3
     assert [paths.index(path) for path in kept] == sorted(paths.index(path) for path in kept)
     assert min(sizes) >= 3
@@ -165,26 +166,26 @@ def test_constant_score_removes_down_to_min_keep(tmp_path: Path):
 def test_collapsing_score_removes_nothing(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         size = len(list(directory.iterdir()))
         assert size >= 4
         return 1.0 if size == len(paths) else 0.0
 
-    kept = filter_subset(paths, metric, min_keep=4, relative_eps=1e-5, rng=Random(0)).kept
+    kept = filter_subset(paths, measure, min_keep=4, relative_eps=1e-5, rng=Random(0)).kept
     assert kept == paths
 
 
 def test_small_drop_is_kept_and_large_drop_is_not(tmp_path: Path):
     paths = _files(tmp_path, 20)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return float(len(list(directory.iterdir())))
 
-    shrunk = filter_subset(paths, metric, min_keep=10, relative_eps=0.1, rng=Random(0)).kept
+    shrunk = filter_subset(paths, measure, min_keep=10, relative_eps=0.1, rng=Random(0)).kept
     assert len(shrunk) == 18
     assert [paths.index(path) for path in shrunk] == sorted(paths.index(path) for path in shrunk)
 
-    held = filter_subset(paths, metric, min_keep=10, relative_eps=0.01, rng=Random(0)).kept
+    held = filter_subset(paths, measure, min_keep=10, relative_eps=0.01, rng=Random(0)).kept
     assert len(held) == 20
     assert held == paths
 
@@ -192,10 +193,10 @@ def test_small_drop_is_kept_and_large_drop_is_not(tmp_path: Path):
 def test_rising_score_removes_down_to_min_keep(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return float(100 - len(list(directory.iterdir())))
 
-    kept = filter_subset(paths, metric, min_keep=3, relative_eps=0.0, rng=Random(0)).kept
+    kept = filter_subset(paths, measure, min_keep=3, relative_eps=0.0, rng=Random(0)).kept
     assert len(kept) == 3
 
 
@@ -209,13 +210,13 @@ def test_input_list_is_not_mutated(tmp_path: Path):
 def test_second_sample_can_accept_after_the_first_fails(tmp_path: Path):
     paths = _files(tmp_path, 3)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         names = {path.name for path in directory.iterdir()}
         return 0.0 if paths[0].name not in names else 1.0
 
     held = filter_subset(
         paths,
-        metric,
+        measure,
         min_keep=2,
         max_tries=1,
         relative_eps=0.0,
@@ -225,7 +226,7 @@ def test_second_sample_can_accept_after_the_first_fails(tmp_path: Path):
 
     kept = filter_subset(
         paths,
-        metric,
+        measure,
         min_keep=2,
         max_tries=2,
         relative_eps=0.0,
@@ -237,10 +238,10 @@ def test_second_sample_can_accept_after_the_first_fails(tmp_path: Path):
 def test_step_zero_is_the_initial_score_at_100_percent(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return 1.0 if len(list(directory.iterdir())) == 6 else 0.0
 
-    result = filter_subset(paths, metric, min_keep=4, relative_eps=1e-5, rng=Random(0))
+    result = filter_subset(paths, measure, min_keep=4, relative_eps=1e-5, rng=Random(0))
     assert result.kept == paths
     assert len(result.steps) == 1
     step = result.steps[0]
@@ -254,10 +255,10 @@ def test_step_zero_is_the_initial_score_at_100_percent(tmp_path: Path):
 def test_committed_shrink_appends_a_step_against_original_n(tmp_path: Path):
     paths = _files(tmp_path, 20)
 
-    def metric(directory: Path) -> float:
+    def measure(directory: Path) -> float:
         return float(len(list(directory.iterdir())))
 
-    result = filter_subset(paths, metric, min_keep=10, relative_eps=0.1, rng=Random(0))
+    result = filter_subset(paths, measure, min_keep=10, relative_eps=0.1, rng=Random(0))
     assert len(result.kept) == 18
     assert [step.index for step in result.steps] == list(range(len(result.steps)))
     assert result.steps[0].remaining_count == 20
@@ -275,10 +276,10 @@ def test_committed_shrink_appends_a_step_against_original_n(tmp_path: Path):
 def test_constant_score_records_each_committed_shrink(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(_directory: Path) -> float:
+    def measure(_directory: Path) -> float:
         return 1.0
 
-    result = filter_subset(paths, metric, min_keep=3, rng=Random(0))
+    result = filter_subset(paths, measure, min_keep=3, rng=Random(0))
     assert len(result.kept) == 3
     assert result.steps[0].index == 0
     assert result.steps[0].score == 1.0
@@ -295,10 +296,10 @@ def test_constant_score_records_each_committed_shrink(tmp_path: Path):
 def test_constant_score_records_each_accepted_probe(tmp_path: Path):
     paths = _files(tmp_path, 100)
 
-    def metric(_directory: Path) -> float:
+    def measure(_directory: Path) -> float:
         return 1.0
 
-    result = filter_subset(paths, metric, min_keep=10, rng=Random(0))
+    result = filter_subset(paths, measure, min_keep=10, rng=Random(0))
     counts = [step.remaining_count for step in result.steps]
     assert counts[0] == 100
     assert result.steps[0].remaining_pct == 100.0
@@ -317,11 +318,37 @@ def test_constant_score_records_each_accepted_probe(tmp_path: Path):
 def test_remaining_is_a_snapshot_of_the_committed_set(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
-    def metric(_directory: Path) -> float:
+    def measure(_directory: Path) -> float:
         return 1.0
 
-    result = filter_subset(paths, metric, min_keep=3, rng=Random(0))
+    result = filter_subset(paths, measure, min_keep=3, rng=Random(0))
     first = result.steps[0].remaining
     result.kept.append(paths[0])
     assert result.steps[0].remaining == first
     assert result.steps[0].remaining == tuple(paths)
+
+
+def test_filter_subset_parameter_is_named_measure(tmp_path: Path):
+    params = inspect.signature(filter_subset).parameters
+    assert "measure" in params
+    assert "metric" not in params
+
+
+def test_filter_subset_accepts_measure_keyword(tmp_path: Path):
+    paths = _files(tmp_path, 3)
+
+    def measure(_directory: Path) -> float:
+        return 1.0
+
+    result = filter_subset(paths, measure=measure, min_keep=1, rng=Random(0))
+    assert [p.name for p in result.kept]
+
+
+def test_filter_subset_rejects_metric_keyword(tmp_path: Path):
+    paths = _files(tmp_path, 3)
+
+    def measure(_directory: Path) -> float:
+        return 1.0
+
+    with pytest.raises(TypeError):
+        filter_subset(paths, metric=measure, min_keep=1, rng=Random(0))

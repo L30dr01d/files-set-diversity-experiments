@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "random-filter"
 version = "0.1.0"
-description = "Random-removal filtration driven by a caller-supplied diversity metric."
+description = "Random-removal filtration driven by a caller-supplied diversity measure."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

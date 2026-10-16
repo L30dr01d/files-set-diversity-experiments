@@ -33,12 +33,12 @@ def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
         type="score_per_measure",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("hang-metric",),
+        tools=("hang-measure",),
     )
     run_score_per_measure(
         experiment,
         root,
-        score_fns={"hang-metric": hang_score},
+        score_fns={"hang-measure": hang_score},
         timeout=0.5,
         output_dir=tmp_path / "output",
     )
@@ -60,27 +60,27 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
         type="score_per_measure",
         title="Viewer title",
         datasets=("ds_one", "ds_two"),
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
     ticks = iter(range(20))
     result = run_score_per_measure(
         experiment,
         root,
         score_fns={
-            "fake-metric": lambda path: 0.1 if path.name == "ds_one" else 0.2,
-            "other-metric": lambda path: 0.3 if path.name == "ds_one" else 0.4,
+            "fake-measure": lambda path: 0.1 if path.name == "ds_one" else 0.2,
+            "other-measure": lambda path: 0.3 if path.name == "ds_one" else 0.4,
         },
         monotonic=lambda: next(ticks),
         output_dir=output_dir,
     )
     assert result == {
         "ds_one": {
-            "fake-metric": {"value": 0.1, "seconds": 1.0},
-            "other-metric": {"value": 0.3, "seconds": 1.0},
+            "fake-measure": {"value": 0.1, "seconds": 1.0},
+            "other-measure": {"value": 0.3, "seconds": 1.0},
         },
         "ds_two": {
-            "fake-metric": {"value": 0.2, "seconds": 1.0},
-            "other-metric": {"value": 0.4, "seconds": 1.0},
+            "fake-measure": {"value": 0.2, "seconds": 1.0},
+            "other-measure": {"value": 0.4, "seconds": 1.0},
         },
     }
     png = output_dir / "ex1.png"
@@ -91,7 +91,7 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     assert "Scores" in out
     assert "Evaluation time (seconds)" in out
     assert "ds_one" in out and "ds_two" in out
-    assert "fake-metric" in out and "other-metric" in out
+    assert "fake-measure" in out and "other-measure" in out
 
 
 def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> None:
@@ -105,16 +105,16 @@ def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> Non
         type="score_per_measure",
         title="Viewer title",
         datasets=("ds_one", "ds_two"),
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
     results = {
         "ds_one": {
-            "fake-metric": {"value": 0.25, "seconds": 1.0},
-            "other-metric": {"value": 0.40, "seconds": 1.0},
+            "fake-measure": {"value": 0.25, "seconds": 1.0},
+            "other-measure": {"value": 0.40, "seconds": 1.0},
         },
         "ds_two": {
-            "fake-metric": {"value": 0.35, "seconds": 1.0},
-            "other-metric": {"value": 0.50, "seconds": 1.0},
+            "fake-measure": {"value": 0.35, "seconds": 1.0},
+            "other-measure": {"value": 0.50, "seconds": 1.0},
         },
     }
     fig = plot_scores(results, experiment)
@@ -123,7 +123,7 @@ def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> Non
         assert len(fig.axes) == 2
         for ax, tool, expected in zip(
             fig.axes,
-            ("fake-metric", "other-metric"),
+            ("fake-measure", "other-measure"),
             ([0.25, 0.35], [0.40, 0.50]),
         ):
             assert ax.get_title() == tool
@@ -156,11 +156,11 @@ def test_plot_annotates_null_and_skips_timed_out_point() -> None:
         type="score_per_measure",
         title="Viewer title",
         datasets=("ds_one", "ds_two"),
-        tools=("fake-metric",),
+        tools=("fake-measure",),
     )
     results = {
-        "ds_one": {"fake-metric": {"value": 0.25, "seconds": 1.0}},
-        "ds_two": {"fake-metric": {"value": None, "seconds": 1200.0}},
+        "ds_one": {"fake-measure": {"value": 0.25, "seconds": 1.0}},
+        "ds_two": {"fake-measure": {"value": None, "seconds": 1200.0}},
     }
     fig = plot_scores(results, experiment)
     try:

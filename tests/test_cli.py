@@ -15,7 +15,7 @@ def test_matrix_payload_is_include_of_ids():
 
 def _layout(root: Path) -> None:
     (root / "datasets" / "ds_one").mkdir(parents=True)
-    (root / "tools" / "fake-metric").mkdir(parents=True)
+    (root / "tools" / "fake-measure").mkdir(parents=True)
     (root / "datasets" / "ds_one" / "a.txt").write_text("a")
     (root / "experiments.json").write_text(
         json.dumps(
@@ -26,7 +26,7 @@ def _layout(root: Path) -> None:
                         "type": "score_per_measure",
                         "title": "Viewer title",
                         "datasets": ["ds_one"],
-                        "tools": ["fake-metric"],
+                        "tools": ["fake-measure"],
                     }
                 ]
             }
@@ -71,7 +71,7 @@ def test_missing_json_exits_one(tmp_path: Path, capsys):
 def test_run_dispatches_measure_per_set(tmp_path: Path, monkeypatch):
     root = tmp_path
     (root / "datasets" / "ds_one").mkdir(parents=True)
-    (root / "tools" / "fake-metric").mkdir(parents=True)
+    (root / "tools" / "fake-measure").mkdir(parents=True)
     (root / "datasets" / "ds_one" / "a.txt").write_text("a")
     (root / "experiments.json").write_text(
         json.dumps(
@@ -82,7 +82,7 @@ def test_run_dispatches_measure_per_set(tmp_path: Path, monkeypatch):
                         "type": "measure_per_set",
                         "title": "t",
                         "datasets": ["ds_one"],
-                        "tools": ["fake-metric"],
+                        "tools": ["fake-measure"],
                     }
                 ]
             }
@@ -106,7 +106,7 @@ def test_run_dispatches_measure_per_set(tmp_path: Path, monkeypatch):
 def test_run_dispatches_score_for_fastr(tmp_path: Path, monkeypatch):
     root = tmp_path
     (root / "datasets" / "ds_one").mkdir(parents=True)
-    (root / "tools" / "fake-metric").mkdir(parents=True)
+    (root / "tools" / "fake-measure").mkdir(parents=True)
     (root / "datasets" / "ds_one" / "a.txt").write_text("a")
     (root / "experiments.json").write_text(
         json.dumps(
@@ -117,7 +117,7 @@ def test_run_dispatches_score_for_fastr(tmp_path: Path, monkeypatch):
                         "type": "score_for_fastr",
                         "title": "t",
                         "datasets": ["ds_one"],
-                        "tools": ["fake-metric"],
+                        "tools": ["fake-measure"],
                     }
                 ]
             }
@@ -141,7 +141,7 @@ def test_run_dispatches_score_for_fastr(tmp_path: Path, monkeypatch):
 def test_run_dispatches_score_for_random_filter(tmp_path: Path, monkeypatch):
     root = tmp_path
     (root / "datasets" / "ds_one").mkdir(parents=True)
-    (root / "tools" / "fake-metric").mkdir(parents=True)
+    (root / "tools" / "fake-measure").mkdir(parents=True)
     (root / "datasets" / "ds_one" / "a.txt").write_text("a")
     (root / "experiments.json").write_text(
         json.dumps(
@@ -152,7 +152,7 @@ def test_run_dispatches_score_for_random_filter(tmp_path: Path, monkeypatch):
                         "type": "score_for_random_filter",
                         "title": "t",
                         "datasets": ["ds_one"],
-                        "tools": ["fake-metric"],
+                        "tools": ["fake-measure"],
                     }
                 ]
             }

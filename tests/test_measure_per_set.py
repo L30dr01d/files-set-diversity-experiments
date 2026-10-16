@@ -19,27 +19,27 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one", "ds_two"),
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
     ticks = iter(range(20))
     result = run_measure_per_set(
         experiment,
         root,
         score_fns={
-            "fake-metric": lambda path: 0.1 if path.name == "ds_one" else 0.2,
-            "other-metric": lambda path: 0.3 if path.name == "ds_one" else 0.4,
+            "fake-measure": lambda path: 0.1 if path.name == "ds_one" else 0.2,
+            "other-measure": lambda path: 0.3 if path.name == "ds_one" else 0.4,
         },
         monotonic=lambda: next(ticks),
         output_dir=output_dir,
     )
     assert result == {
         "ds_one": {
-            "fake-metric": {"value": 0.1, "seconds": 1.0},
-            "other-metric": {"value": 0.3, "seconds": 1.0},
+            "fake-measure": {"value": 0.1, "seconds": 1.0},
+            "other-measure": {"value": 0.3, "seconds": 1.0},
         },
         "ds_two": {
-            "fake-metric": {"value": 0.2, "seconds": 1.0},
-            "other-metric": {"value": 0.4, "seconds": 1.0},
+            "fake-measure": {"value": 0.2, "seconds": 1.0},
+            "other-measure": {"value": 0.4, "seconds": 1.0},
         },
     }
     png = output_dir / "bars.png"
@@ -62,16 +62,16 @@ def test_plot_one_bar_panel_per_dataset() -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one", "ds_two"),
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
     results = {
         "ds_one": {
-            "fake-metric": {"value": 0.25, "seconds": 1.25},
-            "other-metric": {"value": 0.40, "seconds": 2.5},
+            "fake-measure": {"value": 0.25, "seconds": 1.25},
+            "other-measure": {"value": 0.40, "seconds": 2.5},
         },
         "ds_two": {
-            "fake-metric": {"value": 0.35, "seconds": 0.5},
-            "other-metric": {"value": 0.50, "seconds": 3.0},
+            "fake-measure": {"value": 0.35, "seconds": 0.5},
+            "other-measure": {"value": 0.50, "seconds": 3.0},
         },
     }
     fig = plot_bars(results, experiment)
@@ -87,12 +87,12 @@ def test_plot_one_bar_panel_per_dataset() -> None:
             ),
         ):
             assert ax.get_title() == dataset
-            assert ax.get_xlabel() == "Metric"
+            assert ax.get_xlabel() == "Measure"
             assert ax.get_ylabel() == "Score"
             assert ax.get_ylim() == (0.0, 1.18)
             assert [tick.get_text() for tick in ax.get_xticklabels()] == [
-                "fake-metric",
-                "other-metric",
+                "fake-measure",
+                "other-measure",
             ]
             assert [patch.get_height() for patch in ax.patches] == [
                 value for value, _seconds in expected
@@ -116,12 +116,12 @@ def test_plot_annotates_null_and_skips_timed_out_bar() -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("fake-metric", "hang-metric"),
+        tools=("fake-measure", "hang-measure"),
     )
     results = {
         "ds_one": {
-            "fake-metric": {"value": 0.25, "seconds": 1.0},
-            "hang-metric": {"value": None, "seconds": 1200.0},
+            "fake-measure": {"value": 0.25, "seconds": 1.0},
+            "hang-measure": {"value": None, "seconds": 1200.0},
         },
     }
     fig = plot_bars(results, experiment)
@@ -146,20 +146,20 @@ def test_run_prints_progress_before_each_score(tmp_path: Path, capsys) -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("fake-metric", "other-metric"),
+        tools=("fake-measure", "other-measure"),
     )
     run_measure_per_set(
         experiment,
         root,
         score_fns={
-            "fake-metric": lambda path: 0.1,
-            "other-metric": lambda path: 0.2,
+            "fake-measure": lambda path: 0.1,
+            "other-measure": lambda path: 0.2,
         },
         output_dir=tmp_path / "output",
     )
     out = capsys.readouterr().out
-    assert "ds_one fake-metric" in out
-    assert "ds_one other-metric" in out
+    assert "ds_one fake-measure" in out
+    assert "ds_one other-measure" in out
 
 
 def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
@@ -172,19 +172,19 @@ def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("hang-metric",),
+        tools=("hang-measure",),
     )
     run_measure_per_set(
         experiment,
         root,
-        score_fns={"hang-metric": hang_score},
+        score_fns={"hang-measure": hang_score},
         timeout=0.5,
         output_dir=tmp_path / "output",
     )
     assert "null" in capsys.readouterr().out
 
 
-def test_run_continues_when_one_metric_raises(tmp_path: Path, capsys) -> None:
+def test_run_continues_when_one_measure_raises(tmp_path: Path, capsys) -> None:
     root = tmp_path / "repo"
     dataset = root / "datasets" / "ds_one"
     dataset.mkdir(parents=True)
@@ -195,16 +195,16 @@ def test_run_continues_when_one_metric_raises(tmp_path: Path, capsys) -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("boom-metric", "ok-metric"),
+        tools=("boom-measure", "ok-measure"),
     )
     result = run_measure_per_set(
         experiment,
         root,
-        score_fns={"boom-metric": raise_score, "ok-metric": lambda path: 0.5},
+        score_fns={"boom-measure": raise_score, "ok-measure": lambda path: 0.5},
         output_dir=output_dir,
     )
-    assert result["ds_one"]["boom-metric"]["value"] is None
-    assert result["ds_one"]["ok-metric"]["value"] == 0.5
+    assert result["ds_one"]["boom-measure"]["value"] is None
+    assert result["ds_one"]["ok-measure"]["value"] == 0.5
     assert (output_dir / "bars.png").is_file()
     captured = capsys.readouterr()
     assert "warning:" in captured.err

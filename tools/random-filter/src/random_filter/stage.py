@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 
-def score_paths(files: Sequence[Path], metric: Callable[[Path], float]) -> float:
+def score_paths(files: Sequence[Path], measure: Callable[[Path], float]) -> float:
     names = [path.name for path in files]
     if len(names) != len(set(names)):
         duplicate = next(name for name in names if names.count(name) > 1)
@@ -17,4 +17,4 @@ def score_paths(files: Sequence[Path], metric: Callable[[Path], float]) -> float
         dest = Path(tmp)
         for path in files:
             (dest / path.name).symlink_to(path.resolve())
-        return metric(dest)
+        return measure(dest)

@@ -21,12 +21,12 @@ MIN_KEEP = 10
 FilterFn = Callable[..., SubsetResult]
 
 
-def _default_filter(paths, metric, *, relative_eps, max_tries, min_keep, rng):
+def _default_filter(paths, measure, *, relative_eps, max_tries, min_keep, rng):
     from random_filter import filter_subset
 
     return filter_subset(
         paths,
-        metric,
+        measure,
         relative_eps=relative_eps,
         max_tries=max_tries,
         min_keep=min_keep,
@@ -37,7 +37,7 @@ def _default_filter(paths, metric, *, relative_eps, max_tries, min_keep, rng):
 def _timed_filter(
     filter_fn: FilterFn,
     path_strs: tuple[str, ...],
-    metric: ScoreFn,
+    measure: ScoreFn,
     relative_eps: float,
     max_tries: int,
     min_keep: int,
@@ -46,7 +46,7 @@ def _timed_filter(
     paths = [Path(p) for p in path_strs]
     return filter_fn(
         paths,
-        metric,
+        measure,
         relative_eps=relative_eps,
         max_tries=max_tries,
         min_keep=min_keep,
@@ -122,7 +122,7 @@ def run_score_for_random_filter(
             raise TypeError("filter_fn must return a SubsetResult")
         serialized: list[dict] = []
         for step in raw.steps:
-            metrics = {
+            measures = {
                 filter_tool: {"value": float(step.score), "seconds": None},
             }
             if extra_tools:
@@ -133,7 +133,7 @@ def run_score_for_random_filter(
                     dest = Path(tmp) / "kept"
                     stage_kept(files_dir, _remaining_names(step.remaining), dest)
                     for tool in extra_tools:
-                        metrics[tool] = measure_dataset(
+                        measures[tool] = measure_dataset(
                             dest,
                             score_fn=score_fns[tool],
                             monotonic=monotonic,
@@ -144,11 +144,11 @@ def run_score_for_random_filter(
                     "index": int(step.index),
                     "remaining_count": int(step.remaining_count),
                     "remaining_pct": float(step.remaining_pct),
-                    "metrics": metrics,
+                    "measures": measures,
                 }
             )
             values = " ".join(
-                f"{tool}={_format_value(metrics[tool]['value'])}" for tool in tools
+                f"{tool}={_format_value(measures[tool]['value'])}" for tool in tools
             )
             print(
                 f"{dataset_name} step={step.index} kept={step.remaining_count} {values}",
@@ -204,12 +204,12 @@ def plot_steps_grid(results: dict, experiment: Experiment):
         for i, tool in enumerate(tools):
             ys = []
             for step in steps:
-                value = step["metrics"][tool]["value"]
+                value = step["measures"][tool]["value"]
                 ys.append(float("nan") if value is None else float(value))
             ax.plot(xs, ys, marker="o", color=f"C{i}", label=tool)
         ax.set_xticks(xs)
         for step in steps:
-            y = step["metrics"][filter_tool]["value"]
+            y = step["measures"][filter_tool]["value"]
             if y is None:
                 continue
             ax.annotate(

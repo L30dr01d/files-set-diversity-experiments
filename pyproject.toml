@@ -9,12 +9,12 @@ requires-python = ">=3.11"
 dependencies = [
     "pytest>=8",
     "matplotlib>=3.8",
-    "poisson-metric",
-    "ncd1-metric",
-    "levassor-metric",
+    "poisson-measure",
+    "ncd1-measure",
+    "levassor-measure",
     "fast-filter",
     "random-filter",
-    "panhard-v3-metric",
+    "panhard-v3-measure",
 ]
 
 [project.optional-dependencies]
@@ -27,12 +27,12 @@ where = ["src"]
 members = ["tools/*"]
 
 [tool.uv.sources]
-poisson-metric = { workspace = true }
-ncd1-metric = { workspace = true }
-levassor-metric = { workspace = true }
+poisson-measure = { workspace = true }
+ncd1-measure = { workspace = true }
+levassor-measure = { workspace = true }
 fast-filter = { workspace = true }
 random-filter = { workspace = true }
-panhard-v3-metric = { workspace = true }
+panhard-v3-measure = { workspace = true }
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
