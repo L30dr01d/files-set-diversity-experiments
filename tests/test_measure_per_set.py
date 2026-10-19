@@ -105,6 +105,35 @@ def test_plot_one_bar_panel_per_dataset() -> None:
         plt.close(fig)
 
 
+def test_plot_bars_uses_pinned_measure_colors() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgba
+
+    experiment = Experiment(
+        id="bars",
+        type="measure_per_set",
+        title="Viewer title",
+        datasets=("ds_one",),
+        tools=("levassor-measure", "panhard-v3-measure"),
+    )
+    results = {
+        "ds_one": {
+            "levassor-measure": {"value": 0.25, "seconds": 1.0},
+            "panhard-v3-measure": {"value": 0.40, "seconds": 1.0},
+        },
+    }
+    fig = plot_bars(results, experiment)
+    try:
+        colors = [patch.get_facecolor() for patch in fig.axes[0].patches]
+        assert to_rgba(colors[0]) == to_rgba("C1")
+        assert to_rgba(colors[1]) == to_rgba("C0")
+    finally:
+        plt.close(fig)
+
+
 def test_plot_annotates_null_and_skips_timed_out_bar() -> None:
     import matplotlib
 

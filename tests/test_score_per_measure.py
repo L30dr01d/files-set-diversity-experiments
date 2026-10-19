@@ -141,6 +141,33 @@ def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> Non
             assert [text.get_text() for text in ax.texts] == [
                 f"{value:.6f}" for value in expected
             ]
+        assert tuple(fig.get_size_inches()) == (10.0, 5.0)
+    finally:
+        plt.close(fig)
+
+
+def test_plot_grows_with_dataset_count() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    datasets = tuple(f"ds_{i:02d}" for i in range(15))
+    tools = ("fake-measure", "other-measure", "third-measure", "fourth-measure")
+    experiment = Experiment(
+        id="ex1",
+        type="score_per_measure",
+        title="Viewer title",
+        datasets=datasets,
+        tools=tools,
+    )
+    results = {
+        name: {tool: {"value": 0.1, "seconds": 1.0} for tool in tools}
+        for name in datasets
+    }
+    fig = plot_scores(results, experiment)
+    try:
+        assert tuple(fig.get_size_inches()) == (54.0, 6.3)
     finally:
         plt.close(fig)
 

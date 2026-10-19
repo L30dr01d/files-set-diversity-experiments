@@ -8,6 +8,7 @@ from random import Random
 
 from experiment_runner.config import Experiment
 from experiment_runner.paths import dataset_dir, load_score
+from experiment_runner.plotting import tool_color
 from experiment_runner.score_for_fastr import list_basenames, stage_kept
 from experiment_runner.score_per_measure import ScoreFn, measure_dataset
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_timed
@@ -206,7 +207,7 @@ def plot_steps_grid(results: dict, experiment: Experiment):
             for step in steps:
                 value = step["measures"][tool]["value"]
                 ys.append(float("nan") if value is None else float(value))
-            ax.plot(xs, ys, marker="o", color=f"C{i}", label=tool)
+            ax.plot(xs, ys, marker="o", color=tool_color(tool, i), label=tool)
         ax.set_xticks(xs)
         for step in steps:
             y = step["measures"][filter_tool]["value"]

@@ -197,6 +197,41 @@ def test_plot_grid_titles_ylim_and_nan_break() -> None:
         plt.close(fig)
 
 
+def test_plot_budget_grid_uses_pinned_measure_colors() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgba
+
+    experiment = Experiment(
+        id="fastr",
+        type="score_for_fastr",
+        title="Viewer title",
+        datasets=("ds_one",),
+        tools=("levassor-measure", "panhard-v3-measure"),
+    )
+    cell = {
+        pct: {
+            "kept_count": 1,
+            "reduce_seconds": None,
+            "measures": {
+                "levassor-measure": {"value": 0.2, "seconds": 0.0},
+                "panhard-v3-measure": {"value": 0.3, "seconds": 0.0},
+            },
+        }
+        for pct in BUDGET_PCTS
+    }
+    results = {"ds_one": {"FAST++": cell, "FAST-CS": cell}}
+    fig = plot_budget_grid(results, experiment)
+    try:
+        lines = fig.axes[0].get_lines()
+        assert to_rgba(lines[0].get_color()) == to_rgba("C1")
+        assert to_rgba(lines[1].get_color()) == to_rgba("C0")
+    finally:
+        plt.close(fig)
+
+
 def test_score_timeout_is_null(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     _write_dataset(root, "ds_one", n=4)

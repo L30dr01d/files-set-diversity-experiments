@@ -1,0 +1,15 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%hIXFCIAavGyDAqgJnrNXOaXubCIrZzTgiKtBCdvEmKAYqwifUQWmdLBJjhwCxNasJoBxehLwfbPEjGjjAyqHgQcOiNEsraDckNUowTGVKnBDPjHxlMEObHyqMeQNAiVN ElabReflection
+
+data X : Nat -> Type where
+  MkX : X udKBhZXWszkJkuexmpzXSqPXbICCitqdLqlzdxaQalWwrIglCnjEMfObmDrpDTYQUvnxteKFCSHQljuoAqdMUeKfjhbaTHqKWzoHOmPzEFCxBnTrExzfzhUfyrseEuWP
+
+data Y : Type where
+  MkY : {udKBhZXWszkJkuexmpzXSqPXbICCitqdLqlzdxaQalWwrIglCnjEMfObmDrpDTYQUvnxteKFCSHQljuoAqdMUeKfjhbaTHqKWzoHOmPzEFCxBnTrExzfzhUfyrseEuWP : _} -> X udKBhZXWszkJkuexmpzXSqPXbICCitqdLqlzdxaQalWwrIglCnjEMfObmDrpDTYQUvnxteKFCSHQljuoAqdMUeKfjhbaTHqKWzoHOmPzEFCxBnTrExzfzhUfyrseEuWP -> Y
+
+%wPLNpeHbyLcioWKQONoeDeVHIWgqcgPVETWeKdXalQzBRxziVdllQFzVpfdFRKiJILACWqUBDUtLDrnQdgzrIhqDmtdqNQZLpTyLuKhmeOGTPxLdrhwUnvqzQVHAXIja jesTRXQVeEILdtHmJkGKnqDqMgexlZFvYTXHGyKgvialQdJeiFExIroPeNRSrVEOOWhJshwDgVNZyjkaEdVcAHmDqwutpuimAbDJrHWkeyPLlwPpWpmoOPiqmxYdAWcL @{MainCoreDerivator @{LeastEffort}} $ Fuel -> Gen MaybeEmpty Y

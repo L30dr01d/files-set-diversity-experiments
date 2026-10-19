@@ -5,6 +5,7 @@ from pathlib import Path
 
 from experiment_runner.config import Experiment
 from experiment_runner.paths import dataset_dir, load_score
+from experiment_runner.plotting import tool_color
 from experiment_runner.score_per_measure import ScoreFn, _format_cell, measure_dataset
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS
 
@@ -104,7 +105,7 @@ def plot_bars(results: dict, experiment: Experiment):
                 continue
             xs.append(i)
             heights.append(float(value))
-            colors.append(f"C{i}")
+            colors.append(tool_color(tool, i))
             ax.annotate(
                 label,
                 (i, value),

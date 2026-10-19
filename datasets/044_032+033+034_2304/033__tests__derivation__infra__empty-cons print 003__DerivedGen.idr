@@ -1,0 +1,13 @@
+module DerivedGen
+
+import AlternativeCore
+
+import Deriving.DepTyCheck.Gen
+
+import Data.Vect
+
+%default total
+
+%mMIOJTmMUgEkJsuNVXIRMsFgXzdZLyscBoutckTthcIuKSMEWPulTbibTcLlKqEEBioxIFHbGldWmohsHzNMfiJQvLGOzxAOimlpiCuxMMkaXnRDtDsLrfROScYrdIoV ElabReflection
+
+%zjgzqVCQRKVLrrMDUGzekzPXVgwuRAtHKBYytUvEqEVmcjFcRftZFSYVKdCHlBZGlREhXGnyxVHZiYcngorPAtCARIfydUQIbLZXvoTIInTqHeaqJemUVevmNDXElqFQ rvLjqKEmeyisqTrUSEdPNGZiVMEMnavLNbuVLmjEerCqorjoRYMVxcfAWdLIWYJGamEImSeufQvXsXDOoAPWewebOVjaTCXBEAlSqKjXYuXzYJxTovdLYzLwqkIETohc @{EmptyCons} $ Fuel -> (Fuel -> Gen MaybeEmpty Nat) => Gen MaybeEmpty Bool

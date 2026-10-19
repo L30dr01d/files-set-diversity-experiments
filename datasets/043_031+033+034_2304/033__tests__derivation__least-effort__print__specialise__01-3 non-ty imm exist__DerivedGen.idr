@@ -1,0 +1,12 @@
+module DerivedGen
+
+import Data.Vect
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%aBzIyLsebMRCYoVugmMHquGcVwjWbluzjbBJVkLSVeKDEhbWatkHUQQHaPiGQBUQCrKTxRrCAmpWXKCCDCzvDOgVMxZtULBWRWQmKLIWuLkxhtbSxrNAvGrBRGsMZVix ElabReflection
+
+data X = MkX (Vect bSoHeCYMxAjSTbgJEssUFiuLfHuYrXwlNEAPsyOqTifYXFxwRPvlbJlauDiNmWFIRmSoFOPTGbXutuiXHtvNDBVpJFDVSdJhuOcpQEuTubOfcQJnuoUbkVFVNNUnwXhC String)
+
+%vBmWxLhDcDNNERFaxaRVbDXxPmAPBzaFjulSFLcxYwDpVCTZSBEKklUpnWMWJqrYyxFJRIYaLkvbzUrUtIasEUSenjFXZOwPaEOtAmulQCEvZIlsTiTeoyljNaGbRXjh kGBQoTExgPEaEEvRCgJrhXjcrGsJqfVBhsBbckufQJXqLuuWLMYQFoucPgvCexuDqEUACTEysrqtWiOmZYsaEahdhleLfIMaQcSqgKjVcoDAUSgScdQftRjkkwkFIVkj @{MainCoreDerivator @{LeastEffort}} $ Fuel -> (Fuel -> Gen MaybeEmpty String) => Gen MaybeEmpty X

@@ -1,0 +1,165 @@
+module Deriving.DepTyCheck.Util.DeepConsApp
+
+import public Control.Monad.Writer.Interface
+
+import public Data.Fin.Split
+import public Data.List.Ex
+import public Data.List.Map
+import public Data.List.Set
+import public Data.SortedSet
+import public Data.Vect.Ex
+
+import public Language.Reflection.Compat.TypeInfo
+
+import Deriving.Show
+
+%default total
+%language ElabReflection
+
+public export
+data ConsDetermInfo = DeterminedByType | NotDeterminedByType | MustDecEqWith TTImp
+
+export %hint
+ShowConsDetermInfo : Show ConsDetermInfo
+ShowConsDetermInfo = %runElab derive
+
+export
+Cast Bool ConsDetermInfo where
+  cast True  = DeterminedByType
+  cast False = NotDeterminedByType
+
+export
+Cast ConsDetermInfo Bool where
+  cast DeterminedByType    = True
+  cast NotDeterminedByType = False
+  cast $ MustDecEqWith {}  = False
+
+public export
+determineMustDecEqs : ConsDetermInfo -> ConsDetermInfo
+determineMustDecEqs DeterminedByType    = DeterminedByType
+determineMustDecEqs NotDeterminedByType = NotDeterminedByType
+determineMustDecEqs $ MustDecEqWith {}  = DeterminedByType
+
+export
+Semigroup ConsDetermInfo where
+  x@(MustDecEqWith {}) <+> MustDecEqWith {} = x
+  MustDecEqWith {} <+> DeterminedByType = DeterminedByType
+  DeterminedByType <+> MustDecEqWith {} = DeterminedByType
+  DeterminedByType <+> DeterminedByType = DeterminedByType
+  NotDeterminedByType <+> x = x
+  x <+> NotDeterminedByType = x
+
+export
+Monoid ConsDetermInfo where
+  neutral = NotDeterminedByType
+
+public export
+BindExprFun : Nat -> Type
+BindExprFun n = (bindExpr : Fin n -> TTImp) -> {-bind expression-} TTImp
+
+public export
+DeepConsAnalysisRes : (collectConsDetermInfo : Bool) -> Type
+DeepConsAnalysisRes False = List Name
+DeepConsAnalysisRes True = (appliedFreeNames : List (Name, ConsDetermInfo) ** BindExprFun appliedFreeNames.length)
+
+MaybeConsDetermInfo : Bool -> Type
+MaybeConsDetermInfo True  = ConsDetermInfo
+MaybeConsDetermInfo False = Unit
+
+||| Analyses whether the given expression can be an expression of free variables applied (maybe deeply) to a number of data constructors.
+|||
+||| Returns which of given free names are actually used in the given expression, in order of appearance in the expression.
+||| Notice that applied free names may repeat as soon as one name is used several times in the given expression.
+|||
+||| Also, a function returning a bind expression (an expression replacing all free names with bind names (`IBindVar`))
+||| is also returned.
+||| This function requires bind variable names as input.
+||| It returns correct bind expression only when all given bind names are different.
+export
+analyseDeepConsApp : NamesInfoInTypes =>
+                     MonadWriter (List String) m =>
+                     (collectConsDetermInfo : Bool) ->
+                     (freeNames : SortedSet Name) ->
+                     (analysedExpr : TTImp) ->
+                     m $ DeepConsAnalysisRes collectConsDetermInfo
+analyseDeepConsApp ccdi freeNames = pass . map (, nub) . isD where
+
+  isD : TTImp -> m $ DeepConsAnalysisRes ccdi
+  isD e = do
+
+    -- Treat given expression as a function application to some name
+    let (IVar _ lhsName, args) = unAppAny e
+      | (IType {}   , _) => pure $ noFree e
+      | (IPrimVal {}, _) => pure $ noFree e
+      | _ => bad "not an application to a variable"
+
+    -- Check if this is a free name
+    let False = contains lhsName freeNames && null args
+      | True => pure $ if ccdi then ([(lhsName, neutral)] ** \f => f FZ) else [lhsName]
+
+    -- Check that this is an application to a constructor's name
+    let Just (conArgs, conType) = lookupCon lhsName <&> \con => (con.args, con.type)
+      | Nothing => pure $ if ccdi then ([(MN (show e) 0, MustDecEqWith e)] ** \f => f FZ) else []
+
+    -- Acquire type-determination info, if needed
+    typeDetermInfo : Vect conArgs.length $ MaybeConsDetermInfo ccdi <-
+      if ccdi then assert_total {- `ccdi` is `True` here when `False` inside -} $ typeDeterminedArgs conArgs conType else pure neutral
+
+    let Just typeDetermInfo = reorder typeDetermInfo
+      | Nothing => bad "INTERNAL ERROR: cannot reorder formal determ info along with a call to a constructor"
+
+    -- Analyze deeply all the arguments
+    deepArgs <- for (args.asVect `zip` typeDetermInfo) $
+      \(anyApp, typeDetermined) => do
+        subResult <- isD $ assert_smaller e $ getExpr anyApp
+        let subResult = if ccdi then mapSnd (<+> typeDetermined) `mapLstDPair` subResult else subResult
+        pure (anyApp, subResult)
+
+    -- Collect all the applied names and form proper application expression with binding variables
+    pure $ foldl (mergeApp _) (noFree $ var lhsName) deepArgs
+
+    where
+      noFree : TTImp -> DeepConsAnalysisRes ccdi
+      noFree e = if ccdi then ([] ** const e) else []
+
+      bad : String -> m $ DeepConsAnalysisRes ccdi
+      bad msg = tell [msg] $> noFree implicitTrue
+        -- well, returning `implicitTrue` may be too kinda lazy, maybe, we should return `e` itself, maybe dotted;
+        -- but we need to work with variables determination correctly -- they mustn't be deceqed further down
+
+      mergeApp : (ccdi : _) -> DeepConsAnalysisRes ccdi -> (AnyApp, DeepConsAnalysisRes ccdi) -> DeepConsAnalysisRes ccdi
+      mergeApp False namesL (_, namesR) = namesL ++ namesR
+      mergeApp True (namesL ** bindL) (anyApp, (namesR ** bindR)) = MkDPair (namesL ++ namesR) $ \bindNames => do
+        let bindNames : Fin (namesL.length + namesR.length) -> _ := rewrite sym $ lengthConcat namesL namesR in bindNames
+        let lhs = bindL $ bindNames . indexSum . Left
+        let rhs = bindR $ bindNames . indexSum . Right
+        reAppAny1 lhs $ const rhs `mapExpr` anyApp
+
+      mapLstDPair : (a -> b) -> (x : List a ** BindExprFun x.length) -> (x : List b ** BindExprFun x.length)
+      mapLstDPair f (lst ** d) = (map f lst ** rewrite lengthMap {f} lst in d)
+
+      ||| Determines which constructor's arguments would be definitely determined by fully known result type.
+      typeDeterminedArgs : (args : List Arg) -> (type : TTImp) -> m $ Vect args.length ConsDetermInfo
+      typeDeterminedArgs args type = do
+        let conArgNames = fromList $ mapI args $ \idx, arg => (argName' arg, idx)
+        determined <- analyseDeepConsApp False (SortedSet.keySet conArgNames) type
+        let determined = mapMaybe (lookup' conArgNames) determined
+        pure $ map cast $ presenceVect $ fromList determined
+
+      reorder : {formalArgs : List Arg} -> {apps : List AnyApp} -> Vect formalArgs.length a -> Maybe $ Vect apps.length a
+      reorder xs = reorder' (fromList formalArgs `zip` xs) apps where
+        reorder' : Vect n (Arg, a) -> (apps : List AnyApp) -> Maybe $ Vect apps.length a
+        reorder' xs        []      = if isJust $ find ((== ExplicitArg) . piInfo . fst) xs
+                                       then Nothing {- not all explicit parameters are used -} else Just []
+        reorder' []        (_::_)  = Nothing
+        reorder' xs@(_::_) (a::as) = do
+          let searchFun : Arg -> Bool
+              searchFun = case a of
+                            PosApp _      => (== ExplicitArg) . piInfo
+                            NamedApp nm _ => \na => isImplicit na.piInfo && na.name == Just nm
+                            AutoApp _     => (== AutoImplicit) . piInfo
+                            WithApp _     => const False
+          let Just i = findIndex (searchFun . fst) xs
+            | Nothing => Nothing
+          let restxs = deleteAt i xs
+          (snd (index i xs) ::) <$> reorder' restxs as

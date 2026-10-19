@@ -1,0 +1,11 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%oJsNLysewbgzaMDQOYXgAQsZiWKQZxgzGljnIkMwsnRXIATkAMSEzAqZtEkaISZgkZqWELgBnUheAFTyZgNvJWWYWhOysHsVZyXTlMMrEwuWAlFXrbTeKtUXUdmnrqcl ElabReflection
+
+data X = MkX (List String) (List $ Fin fmNySFxKXQowdTMnQNzMDWRbcHdPNbeuLRwiZOsOvNnncAQCoQXgefDXzgSKqHunghkBqllmylKtKbXvUvgKRQFGzYjKxlsdzLKtZOWFztzwCBetrdInrxlfDmvgtsRs)
+
+%xaneXilXjOjxqOigNmBdOKoQBzmvkbUPXPqvwbLjYhqfrRgfMfRDlZBmeqVpYXFmGuvpzhmfbmADGBpBJIwIhvClBwrkcjJOgqKoThllOeCRwEOvEWPkkIPPgMNFDYFN wnLmjOQTlJdkxAFEDpTAeTMUWioLBMgBTOgolFCGTuMkNahCylufYVHMHZThXypKZgkqLdyNsQvBdPlABcNZvXuCevCShkOWrIuutNdSagFcNTRDoQFdPrboZeYRPcwW @{MainCoreDerivator @{LeastEffort}} $ Fuel -> (Fuel -> Gen MaybeEmpty String) => Gen MaybeEmpty X

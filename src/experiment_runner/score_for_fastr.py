@@ -9,6 +9,7 @@ from pathlib import Path
 
 from experiment_runner.config import Experiment
 from experiment_runner.paths import dataset_dir, load_score
+from experiment_runner.plotting import tool_color
 from experiment_runner.score_per_measure import ScoreFn, measure_dataset
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_timed
 
@@ -178,7 +179,7 @@ def plot_budget_grid(results: dict, experiment: Experiment):
                 for pct in BUDGET_PCTS:
                     value = results[dataset][algo][pct]["measures"][tool]["value"]
                     ys.append(float("nan") if value is None else float(value))
-                ax.plot(positions, ys, marker="o", color=f"C{i}", label=tool)
+                ax.plot(positions, ys, marker="o", color=tool_color(tool, i), label=tool)
             ax.set_title(f"{dataset} — {algo}")
             ax.set_xlabel("budget % of original suite")
             ax.set_ylabel("Score")

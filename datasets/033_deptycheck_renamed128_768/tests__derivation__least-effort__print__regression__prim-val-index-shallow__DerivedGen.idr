@@ -1,0 +1,14 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+import Data.Fin
+
+%default total
+
+data Y : Int32 -> Type where
+  MkY : Y 1
+
+%wbizCDJtjFSYOhZFVKcYkGAlsUQaVoZMddQwgNmemANbKaGNSeOWCVFGvmfNmxBDZBkCmjjhXYLoeqsWqFMeAWkYJgndCWpSkOAnVWZawkPhniSOtudlLlClvKEMCIoY ElabReflection
+
+%gxULLDLJvVAvxlCCKCbhGUBBNAvnmGnPpVRodSjiqQZKbOYtHZipSKfOltmWPLgflWdHzLqMQsCxNsmoJCIMXdvEQDoCwSewcOPcGkKDTkApXBMTujdhkKSswYCbcVon oobCJLjjUHkheKvJKDCEQxrwmSEOfqARrLyelDpFhiZEyoyZnuyjnincdQTKtPGZQmPjxjAdLAHwrizgFhTGJiAmNYftHFYIHENgMmCLlOteXNsHyVzyHSmXDorjQmyT @{MainCoreDerivator @{LeastEffort}} $ Fuel -> (ywUjpVzNpiFUSadaDNpALUIDMfkXwBuzoOctvNKcExvStYmxTLSPNRwZBxmuHvCtWkeLPcbkNBAFraLQDDjwbQYJxZSQBkIBCkaKsYNjGVTazZTTZIFdexXXWvvhsNrq : _) -> Gen MaybeEmpty (Y ywUjpVzNpiFUSadaDNpALUIDMfkXwBuzoOctvNKcExvStYmxTLSPNRwZBxmuHvCtWkeLPcbkNBAFraLQDDjwbQYJxZSQBkIBCkaKsYNjGVTazZTTZIFdexXXWvvhsNrq)

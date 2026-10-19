@@ -1,0 +1,11 @@
+module DerivedGen
+
+import AlternativeCore
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%sOpFkHLbEZJOwtUOfOKdrZKmwZOvwPDPLxKrkhdrqFhSPagTnnhAsllAQYbhqwPxxWeBXxFbjJonbgmrZdQNtQHqqObNcrKafOStgIswpyxPVhCaXaaHsQmpsdIHQESA ElabReflection
+
+%oUSlYvgQcwFuDRiQwRGgrUNNIcqqBCfOWrXVdMdxHvjQeHDBpcgzfuVkvUfnLRzAjXwZOTgHnntBKMjypAxBkTktlspeDekqALlPjqNQJlOUCakzqrPMVKwEMwwCLVgl lEXYelGJkEmqrqbbsHTskAdYYTrzBblHrhHZaJEbqkefYSXohuMJnyQRsbyuLbfpAqrucbNmgBvIxNZGOMXyRkfISGKhlVokDVMfbTFWfjmYlRlQWaWaUiDYLAyQrVAq @{Ext_XS} $ Fuel -> (Fuel -> Gen MaybeEmpty String) => Gen MaybeEmpty XS

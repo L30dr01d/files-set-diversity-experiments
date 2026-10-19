@@ -1,0 +1,57 @@
+module TypesAndInvolved
+
+import Infra
+
+%language ElabReflection
+
+%default total
+
+-- Two mutually recursive types
+mutual
+  data X a b = MkX a (Y a b)
+  data Y a b = Nil | MkY a (X a b)
+
+%runElab printAllInvolvedTypesVerdict
+  [ ("X", M0, ["X", "Y"])
+  , ("TTImp", M0,
+    [ "AltType"
+    , "BindMode"
+    , "BuiltinType"
+    , "Clause"
+    , "Constant"
+    , "Count"
+    , "Data"
+    , "DataOpt"
+    , "Decl"
+    , "DotReason"
+    , "FC"
+    , "FnOpt"
+    , "IClaimData"
+    , "IField"
+    , "IFieldUpdate"
+    , "ITy"
+    , "LazyReason"
+    , "List1"
+    , "ModuleIdent"
+    , "Name"
+    , "Namespace"
+    , "OriginDesc"
+    , "PiInfo"
+    , "PrimType"
+    , "Record"
+    , "TTImp"
+    , "TotalReq"
+    , "UseSide"
+    , "UserName"
+    , "VirtualIdent"
+    , "Visibility"
+    , "WithFC"
+    , "WithFlag"
+    , "Bool"
+    , "List"
+    , "Maybe"
+    , "Nat"
+    , "Pair"
+    , "WithDefault"
+    ])
+  ]

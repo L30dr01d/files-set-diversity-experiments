@@ -92,8 +92,16 @@ def plot_scores(results: dict, experiment: Experiment):
 
     labels = list(experiment.datasets)
     tools = list(experiment.tools)
+    n_datasets = len(labels)
+    n_tools = len(tools)
+    panel_w = max(5.0, 0.9 * n_datasets)
+    panel_h = max(5.0, 4.5 + 0.12 * n_datasets)
     fig, axes = plt.subplots(
-        1, len(tools), figsize=(5 * len(tools), 5), squeeze=False, constrained_layout=True
+        1,
+        n_tools,
+        figsize=(panel_w * n_tools, panel_h),
+        squeeze=False,
+        constrained_layout=True,
     )
     fig.suptitle(experiment.title)
     colors = [f"C{i}" for i in range(len(labels))]

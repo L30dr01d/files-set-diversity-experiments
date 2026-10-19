@@ -1,0 +1,26 @@
+module Infra
+
+import public Language.Reflection.Compat
+import public Language.Reflection.Expr
+
+%language ElabReflection
+
+public export
+unlist : TTImp -> List TTImp
+unlist e = do
+  let (_, [a, b]) = unApp e
+--    | (IVar {}, []) => []
+    | _             => []
+  a :: unlist b
+
+public export
+printTyDeps : (0 _ : List Type) -> Elab Unit
+printTyDeps tys = do
+  tys <- quote tys
+  let tys = unlist tys
+  for_ tys $ \expr => do
+    let (args, ret) = unPi expr
+    let deps = map Fin.Set.toList $ argDeps args
+    let expr' = piAll ret $ {piInfo := ExplicitArg} <$> args -- as if all arguments were explicit
+    logSugaredTerm "deptycheck.arg-deps" 0 "type        " expr'
+    logMsg         "deptycheck.arg-deps" 0 "dependencies: \{show deps}\n"

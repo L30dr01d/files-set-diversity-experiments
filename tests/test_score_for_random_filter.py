@@ -314,3 +314,44 @@ def test_plot_steps_grid_titles_ylim_labels_and_nan() -> None:
         assert fig.axes[1].get_lines() == []
     finally:
         plt.close(fig)
+
+
+def test_plot_steps_grid_uses_pinned_measure_colors() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgba
+
+    from experiment_runner.score_for_random_filter import plot_steps_grid
+
+    experiment = Experiment(
+        id="rand",
+        type="score_for_random_filter",
+        title="Viewer title",
+        datasets=("ds_one",),
+        tools=("levassor-measure", "panhard-v3-measure"),
+    )
+    results = {
+        "ds_one": {
+            "filter_seconds": 1.0,
+            "steps": [
+                {
+                    "index": 0,
+                    "remaining_count": 8,
+                    "remaining_pct": 100.0,
+                    "measures": {
+                        "levassor-measure": {"value": 0.2, "seconds": None},
+                        "panhard-v3-measure": {"value": 0.4, "seconds": 0.1},
+                    },
+                },
+            ],
+        },
+    }
+    fig = plot_steps_grid(results, experiment)
+    try:
+        lines = fig.axes[0].get_lines()
+        assert to_rgba(lines[0].get_color()) == to_rgba("C1")
+        assert to_rgba(lines[1].get_color()) == to_rgba("C0")
+    finally:
+        plt.close(fig)

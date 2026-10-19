@@ -1,0 +1,23 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%ckBJmcegEnSZyrRxAOKhTBCvejREvvLwFqCDhwcYInxKxsJlAuvWPWBcbfYHdXHJgFouyBtfQbBvQMyvGaJmkOAfmMUnapcXVKDAaflDjcdyiLcgqeGPruNeGbNhbkIQ ElabReflection
+
+data X : Type where
+  MkX : Nat -> Bool -> X
+
+data Y : X -> Type where
+  MkY : Y (MkX bBvCpAFwBLEWTdVjAxjnMTtQXcrcQnmizXFmxtAXldplXaaGFADNOoRYAhbXwfodCbrbYTLzHNtFpSsKnbtsnbQRnGnPSEEPADmTGZonyFfXQYIBZlEACHpDeeKFDQRa wcXZpxoMQLsyUwuYIXVArPxqzQbntgZqLbJYrbuIbfRzzsktDzaRlkQdoGmwZTaprNKKusGqEaWqaTmGZPvJrmJcWkNcPoyBSCOrGNxmFIKJTdkrQxUuAMNAaKMiQZjB)
+
+data Z : Type where
+  MkZ : (ucuVcbjwYWiSWKZbrtGlMhdanMUancyTLeajAiautxUKUMSVJApRjyudmNGFFkbAcISpdhiiqYaTNsaunIhLWpogAsmYPfzwsryzcGdAMZkwZAjzhCpiJWrvyzsPSlap : X) ->
+        Y ucuVcbjwYWiSWKZbrtGlMhdanMUancyTLeajAiautxUKUMSVJApRjyudmNGFFkbAcISpdhiiqYaTNsaunIhLWpogAsmYPfzwsryzcGdAMZkwZAjzhCpiJWrvyzsPSlap =>
+        Z
+
+data W : Z -> Z -> Type where
+  MkW : W (MkZ (MkX bBvCpAFwBLEWTdVjAxjnMTtQXcrcQnmizXFmxtAXldplXaaGFADNOoRYAhbXwfodCbrbYTLzHNtFpSsKnbtsnbQRnGnPSEEPADmTGZonyFfXQYIBZlEACHpDeeKFDQRa False)) (MkZ (MkX bBvCpAFwBLEWTdVjAxjnMTtQXcrcQnmizXFmxtAXldplXaaGFADNOoRYAhbXwfodCbrbYTLzHNtFpSsKnbtsnbQRnGnPSEEPADmTGZonyFfXQYIBZlEACHpDeeKFDQRa True))
+
+%dsGtqNALiwfWybIAgSsxiudLhSRFrdlZtkTcfNMwCVfWpZDtmNnNollIbJmGuIwoYasddmSrykvptzhoKpdoHABCUamqnQNVgMxPntJKvYxnqbneSKqRNPumZweOMmLz wFrZleIQPACubjFTDAIoHThjHfmJAZsNNuSegfHmrcPIXpkDWCUxGYdfdCPGFFZmxgUcrJmPKQkYsfdMYudnblIlJfvhGkUngWurobOcgJkJsfqXhTttCcdMYbDPAQke @{MainCoreDerivator @{LeastEffort}} $ Fuel -> (svOXghPTyvdXEhfSdRLkiIMLnGkjaRIIcyeNngQSJzHigeUjISefixzmIDwINdSPhNNvQvlWnxlOandpHayVZVsfXKYEbeFAooZecWpRWtQbnfwWEdaiBlOFlgLHupOn : Z) -> (wcXZpxoMQLsyUwuYIXVArPxqzQbntgZqLbJYrbuIbfRzzsktDzaRlkQdoGmwZTaprNKKusGqEaWqaTmGZPvJrmJcWkNcPoyBSCOrGNxmFIKJTdkrQxUuAMNAaKMiQZjB : Z) -> Gen MaybeEmpty (W svOXghPTyvdXEhfSdRLkiIMLnGkjaRIIcyeNngQSJzHigeUjISefixzmIDwINdSPhNNvQvlWnxlOandpHayVZVsfXKYEbeFAooZecWpRWtQbnfwWEdaiBlOFlgLHupOn wcXZpxoMQLsyUwuYIXVArPxqzQbntgZqLbJYrbuIbfRzzsktDzaRlkQdoGmwZTaprNKKusGqEaWqaTmGZPvJrmJcWkNcPoyBSCOrGNxmFIKJTdkrQxUuAMNAaKMiQZjB)

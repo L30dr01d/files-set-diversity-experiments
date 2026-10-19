@@ -1,7 +1,7 @@
 {
   "experiments": [
     {
-      "id": "algo_similar_vs_diverse",
+      "id": "00_algo_similar_vs_diverse",
       "type": "score_per_measure",
       "title": "Java problem solutions",
       "datasets": [
@@ -19,7 +19,7 @@
       ]
     },
     {
-      "id": "different_sv_sets",
+      "id": "01_different_sv_sets",
       "type": "score_per_measure",
       "title": "Different sv sets",
       "datasets": [
@@ -36,7 +36,7 @@
       ]
     },
     {
-      "id": "different_content_sets",
+      "id": "02_different_content_sets",
       "type": "score_per_measure",
       "title": "Different content sets",
       "datasets": [
@@ -53,7 +53,7 @@
       ]
     },
     {
-      "id": "different_content_sets_big",
+      "id": "03_different_content_sets_big",
       "type": "measure_per_set",
       "title": "Different content sets big",
       "datasets": [
@@ -71,7 +71,7 @@
       ]
     },
     {
-      "id": "small_vs_big_sets",
+      "id": "04_small_vs_big_sv_sets",
       "type": "score_per_measure",
       "title": "Small vs big sets",
       "datasets": [
@@ -91,7 +91,7 @@
       ]
     },
     {
-      "id": "super_random_3",
+      "id": "05_super_random_3",
       "type": "measure_per_set",
       "title": "Super random set",
       "datasets": [
@@ -105,7 +105,7 @@
       ]
     },
     {
-      "id": "otk_1000_time",
+      "id": "06_otk_1000_time",
       "type": "measure_per_set",
       "title": "OTK 1000 time",
       "datasets": [
@@ -119,7 +119,7 @@
       ]
     },
     {
-      "id": "dataset_time",
+      "id": "07_dataset_time",
       "type": "measure_per_set",
       "title": "Real dataset time",
       "datasets": [
@@ -130,7 +130,7 @@
       ]
     },
     {
-      "id": "score_fast_dataset_levassor",
+      "id": "08_score_fast_dataset_levassor",
       "type": "score_for_fastr",
       "title": "Real dataset filter by fastr + levassor scoring",
       "datasets": [
@@ -141,7 +141,7 @@
       ]
     },
     {
-      "id": "score_fast_otk_1000_levassor",
+      "id": "09_score_fast_otk_1000_levassor",
       "type": "score_for_fastr",
       "title": "otk filter by fastr + levassor scoring",
       "datasets": [
@@ -152,7 +152,7 @@
       ]
     },
     {
-      "id": "score_fast_duplicates_150_all",
+      "id": "10_score_fast_duplicates_150_all",
       "type": "score_for_fastr",
       "title": "Duplicates filter by fastr + score by all",
       "datasets": [
@@ -166,7 +166,7 @@
       ]
     },
     {
-      "id": "one_file",
+      "id": "11_one_file",
       "type": "score_per_measure",
       "title": "One file copied X times",
       "datasets": [
@@ -183,7 +183,7 @@
       ]
     },
     {
-      "id": "dataset_random_filter_levassor_measure",
+      "id": "12_dataset_random_filter_levassor_measure",
       "type": "score_for_random_filter",
       "title": "Dataset filtered by random filter + levassor measure",
       "datasets": [
@@ -194,7 +194,7 @@
       ]
     },
     {
-      "id": "150_sv_random_filter_levassor_measure",
+      "id": "13_150_sv_random_filter_levassor_measure",
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + levassor measure",
       "datasets": [
@@ -209,7 +209,7 @@
       ]
     },
     {
-      "id": "150_sv_random_filter_panhard_measure",
+      "id": "14_150_sv_random_filter_panhard_measure",
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + panhard measure",
       "datasets": [
@@ -221,6 +221,47 @@
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
+      ]
+    },
+    {
+      "id": "15_150_sv_fast_filter",
+      "type": "score_for_fastr",
+      "title": "150 sv files filtered by fast filter",
+      "datasets": [
+        "009_random_sv_150",
+        "011_duplicates_sv_75x2_150"
+      ],
+      "tools": [
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
+      ]
+    },
+    {
+      "id": "16_deptycheck",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "031_deptycheck_original_768",
+        "032_deptycheck_renamed_same_length_768",
+        "033_deptycheck_renamed128_768",
+        "034_deptycheck_renamed128_2_768",
+        "035_031+032_1536",
+        "036_031+033_1536",
+        "037_031+034_1536",
+        "038_032+033_1536",
+        "039_032+034_1536",
+        "040_033+034_1536",
+        "041_031+032+033_2304",
+        "042_031+032+034_2304",
+        "043_031+033+034_2304",
+        "044_032+033+034_2304",
+        "045_031+032+033+034_3072"
+      ],
+      "tools": [
+        "panhard-v3-measure",
+        "levassor-measure"
       ]
     }
   ]

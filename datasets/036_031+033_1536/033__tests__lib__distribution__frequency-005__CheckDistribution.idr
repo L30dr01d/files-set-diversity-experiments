@@ -1,0 +1,23 @@
+module CheckDistribution
+
+import DistrCheckCommon
+
+%default total
+
+wvqPgMalnDQkYUUiXYONTEhhmcqWBTyoOSfMycAkSKQFXqGEPHhwTPSFVOnAZJENcPZHhiVXzlWYOtMseruorblIHLWumAduqiUNEtmYoISzqJbbPQfOXsWKCAGeUqYX : Gen MaybeEmpty Bool
+wvqPgMalnDQkYUUiXYONTEhhmcqWBTyoOSfMycAkSKQFXqGEPHhwTPSFVOnAZJENcPZHhiVXzlWYOtMseruorblIHLWumAduqiUNEtmYoISzqJbbPQfOXsWKCAGeUqYX = bUtuujUvKHcBEZtUedjHFNDFHaKdhchhJDLxpqXdruHDZDMGzNQwbYLGQApMYXmwBFasLoMGLMazJtJiMMKcASpDKbAucDosiSPXQLiOtwhULNDFmhlJdHsoEyGOzGBO
+        [ xlHsPZnHCvZIlTmfeKbMMZJOBClVmBluMsjDvOEYIqPdJaRCnNVQIJueQQBBprcaGinTksmDjEaHpOEgflTXfAoTYGjobJanCmusYaKuUyCVDmFaOhJNeRLgQkYMLFbj
+            [ (10000000, dRJnjachrWgBpfHdjOwVeXoKhgwldpmlfkHFjlYGBunUCYASqnPVKkmHRcHudNJKknCIOEgIaGCSOrpLgddZMZhcjcLgnBZAReCrkvNCkCAJZfXsqoIkeSFbEAYApmHo True)
+            , (10000000, dRJnjachrWgBpfHdjOwVeXoKhgwldpmlfkHFjlYGBunUCYASqnPVKkmHRcHudNJKknCIOEgIaGCSOrpLgddZMZhcjcLgnBZAReCrkvNCkCAJZfXsqoIkeSFbEAYApmHo False)
+            ]
+        , xlHsPZnHCvZIlTmfeKbMMZJOBClVmBluMsjDvOEYIqPdJaRCnNVQIJueQQBBprcaGinTksmDjEaHpOEgflTXfAoTYGjobJanCmusYaKuUyCVDmFaOhJNeRLgQkYMLFbj
+            [ (20000000, dRJnjachrWgBpfHdjOwVeXoKhgwldpmlfkHFjlYGBunUCYASqnPVKkmHRcHudNJKknCIOEgIaGCSOrpLgddZMZhcjcLgnBZAReCrkvNCkCAJZfXsqoIkeSFbEAYApmHo True)
+            , (20000000, dRJnjachrWgBpfHdjOwVeXoKhgwldpmlfkHFjlYGBunUCYASqnPVKkmHRcHudNJKknCIOEgIaGCSOrpLgddZMZhcjcLgnBZAReCrkvNCkCAJZfXsqoIkeSFbEAYApmHo False)
+            ]
+        ]
+
+nVivuNHlVopIidSqPRWGIWcmikkGxorFqdXlPKLxveLAbrydivXWIiBCUDRqUgiSIrXoVDyNgAxHcwXIzTFOsmKZTFFhjICeGxrIvVoQUKAWCXGnDcbrjjNwbeFUOyxo : IO ()
+nVivuNHlVopIidSqPRWGIWcmikkGxorFqdXlPKLxveLAbrydivXWIiBCUDRqUgiSIrXoVDyNgAxHcwXIzTFOsmKZTFFhjICeGxrIvVoQUKAWCXGnDcbrjjNwbeFUOyxo = gJPcqOFqFcDiGzkbUWNLAANBFrUCTmtZuQrWJSLBevFYUXkfGhrxNHsmiuGasoMbGdpjhiHaeWAyJuNjbTdXFOEsOImZbBgEQZiArYlEICZBaxMGnZMFqgUKdcxKhCGl wvqPgMalnDQkYUUiXYONTEhhmcqWBTyoOSfMycAkSKQFXqGEPHhwTPSFVOnAZJENcPZHhiVXzlWYOtMseruorblIHLWumAduqiUNEtmYoISzqJbbPQfOXsWKCAGeUqYX
+         [ otcajICVHBAHjziecBoQOmCDnTHtJmdyMHRhAEtIBGyHacNwJwitazWaIDkVIyxZvcrxkxizvCRqvelscJigQrvnjQHRCCOAVhOjJoNORTdKqJreLWhastjiwNtkeaXQ 50.aaPnDvDbRioOdnMSnzMYrEmAAtRMBaqZTNFLqeUYcNGbrluIkFKEOGFxETHOjsvdLcksklpOXjxnXucGdvorgXtjGpZqXCaYPhgyBcLeLVNMvUVEwkhXbBljFcrtWFBv (== True)
+         , otcajICVHBAHjziecBoQOmCDnTHtJmdyMHRhAEtIBGyHacNwJwitazWaIDkVIyxZvcrxkxizvCRqvelscJigQrvnjQHRCCOAVhOjJoNORTdKqJreLWhastjiwNtkeaXQ 50.aaPnDvDbRioOdnMSnzMYrEmAAtRMBaqZTNFLqeUYcNGbrluIkFKEOGFxETHOjsvdLcksklpOXjxnXucGdvorgXtjGpZqXCaYPhgyBcLeLVNMvUVEwkhXbBljFcrtWFBv (== False)
+         ]
