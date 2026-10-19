@@ -20,8 +20,6 @@ def _list_files(files_dir: Path) -> list[Path]:
 
 def score(files_dir: Path) -> float:
     paths = _list_files(files_dir)
-    if len(paths) < 3:
-        raise ValueError(f"levassor_measure requires >= 3 files, got {len(paths)}")
     denom = 0
     sketch = HyperLogLog(p=14)
     for path in paths:

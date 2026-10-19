@@ -12,11 +12,15 @@ def _write_copies(folder: Path, blob: bytes, n: int) -> None:
         (folder / f"f{i:03d}.bin").write_bytes(blob)
 
 
-def test_score_two_files_raises(tmp_path: Path) -> None:
-    (tmp_path / "a.txt").write_text("aaa", encoding="utf-8")
-    (tmp_path / "b.txt").write_text("bbb", encoding="utf-8")
-    with pytest.raises(ValueError, match="levassor_measure requires >= 3 files"):
-        score(tmp_path)
+def test_identical_copies_one_and_two_files_follow_one_over_n(tmp_path: Path) -> None:
+    one = tmp_path / "n1"
+    two = tmp_path / "n2"
+    one.mkdir()
+    two.mkdir()
+    _write_copies(one, _BLOB, 1)
+    _write_copies(two, _BLOB, 2)
+    assert score(one) == pytest.approx(1, rel=0.2)
+    assert score(two) == pytest.approx(1 / 2, rel=0.2)
 
 
 def test_score_rejects_empty_dir(tmp_path: Path) -> None:

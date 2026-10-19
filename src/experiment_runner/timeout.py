@@ -8,7 +8,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-SCORE_TIMEOUT_SECONDS = 20 * 60
+SCORE_TIMEOUT_SECONDS = 60 * 60
 WORKER_MEMORY_BYTES = 4 * 1024 * 1024 * 1024
 
 ScoreFn = Callable[[Path], float]

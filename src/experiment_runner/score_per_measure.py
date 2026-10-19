@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from experiment_runner.config import Experiment
@@ -9,6 +10,7 @@ from experiment_runner.paths import dataset_dir, load_score
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_score
 
 ScoreFn = Callable[[Path], float]
+SCORE_WORKERS = 2
 
 
 def _format_cell(value: object, precision: int) -> str:
@@ -39,16 +41,43 @@ def run_score_per_measure(
     monotonic=None,
     timeout: float = SCORE_TIMEOUT_SECONDS,
     output_dir: Path,
+    workers: int = SCORE_WORKERS,
 ) -> dict:
     if score_fns is None:
         score_fns = {name: load_score(name) for name in experiment.tools}
-    results: dict = {}
-    for name in experiment.datasets:
+    cells = [
+        (name, tool, score_fn)
+        for name in experiment.datasets
+        for tool, score_fn in score_fns.items()
+    ]
+    total = len(cells)
+    print(
+        f"{experiment.id}: {len(experiment.datasets)} datasets × {len(score_fns)} measures "
+        f"= {total} scores ({workers} in parallel)",
+        flush=True,
+    )
+    results: dict = {name: {} for name in experiment.datasets}
+
+    def run_cell(name: str, tool: str, score_fn: ScoreFn) -> tuple[str, str, dict]:
         files_dir = dataset_dir(root, name)
-        results[name] = {}
-        for tool, score_fn in score_fns.items():
-            results[name][tool] = measure_dataset(
-                files_dir, score_fn=score_fn, monotonic=monotonic, timeout=timeout
+        return name, tool, measure_dataset(
+            files_dir, score_fn=score_fn, monotonic=monotonic, timeout=timeout
+        )
+
+    done = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(run_cell, name, tool, score_fn) for name, tool, score_fn in cells
+        ]
+        for fut in as_completed(futures):
+            name, tool, measured = fut.result()
+            results[name][tool] = measured
+            done += 1
+            value = measured["value"]
+            value_s = "null" if value is None else f"{float(value):.6f}"
+            print(
+                f"[{done}/{total}] {name}  {tool}  {measured['seconds']:.3f}s  {value_s}",
+                flush=True,
             )
 
     label_width = max(len("Dataset"), *(len(name) for name in experiment.datasets))

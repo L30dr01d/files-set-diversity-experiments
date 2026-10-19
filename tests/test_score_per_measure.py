@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from experiment_runner.config import Experiment
@@ -72,6 +73,7 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
         },
         monotonic=lambda: next(ticks),
         output_dir=output_dir,
+        workers=1,
     )
     assert result == {
         "ds_one": {
@@ -92,6 +94,58 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     assert "Evaluation time (seconds)" in out
     assert "ds_one" in out and "ds_two" in out
     assert "fake-measure" in out and "other-measure" in out
+
+
+def test_run_prints_job_size_and_per_cell_timing(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "repo"
+    dataset = root / "datasets" / "ds_one"
+    dataset.mkdir(parents=True)
+    (dataset / "a.txt").write_text("a")
+    experiment = Experiment(
+        id="ex1",
+        type="score_per_measure",
+        title="Viewer title",
+        datasets=("ds_one",),
+        tools=("fake-measure",),
+    )
+    run_score_per_measure(
+        experiment,
+        root,
+        score_fns={"fake-measure": lambda path: 0.4},
+        output_dir=tmp_path / "output",
+    )
+    out = capsys.readouterr().out
+    assert "ex1: 1 datasets × 1 measures = 1 scores (2 in parallel)" in out
+    assert "[1/1] ds_one  fake-measure" in out
+    assert "s" in out
+
+
+def test_run_two_scores_overlap(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    first = root / "datasets" / "ds_one"
+    second = root / "datasets" / "ds_two"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+    (first / "a.txt").write_text("a")
+    (second / "a.txt").write_text("aa")
+    experiment = Experiment(
+        id="ex1",
+        type="score_per_measure",
+        title="Viewer title",
+        datasets=("ds_one", "ds_two"),
+        tools=("hang-measure",),
+    )
+    t0 = time.monotonic()
+    run_score_per_measure(
+        experiment,
+        root,
+        score_fns={"hang-measure": hang_score},
+        timeout=0.5,
+        output_dir=tmp_path / "output",
+    )
+    elapsed = time.monotonic() - t0
+    assert elapsed >= 0.5
+    assert elapsed < 0.95
 
 
 def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> None:

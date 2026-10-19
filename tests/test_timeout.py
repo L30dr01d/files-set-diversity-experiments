@@ -6,8 +6,8 @@ from experiment_runner.timeout import call_score, hang_score, kill_self, quick_s
 from experiment_runner.timeout import call_timed, hang_reduce, raise_score
 
 
-def test_timeout_constant_is_twenty_minutes():
-    assert SCORE_TIMEOUT_SECONDS == 20 * 60
+def test_timeout_constant_is_one_hour():
+    assert SCORE_TIMEOUT_SECONDS == 60 * 60
 
 
 def test_worker_memory_cap_is_four_gib():

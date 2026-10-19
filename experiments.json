@@ -170,6 +170,12 @@
       "type": "score_per_measure",
       "title": "One file copied X times",
       "datasets": [
+        "012_one_sv_file_1",
+        "048_one_sv_file_2",
+        "049_one_sv_file_3",
+        "050_one_sv_file_5",
+        "051_one_sv_file_7",
+        "052_one_sv_file_10",
         "027_one_sv_file_25",
         "028_one_sv_file_50",
         "029_one_sv_file_75",
@@ -262,6 +268,25 @@
       "tools": [
         "panhard-v3-measure",
         "levassor-measure"
+      ]
+    },
+    {
+      "id": "17_similar_random_different_vs_duplicates",
+      "type": "score_per_measure",
+      "title": "Similar",
+      "datasets": [
+        "004_similar_sv_subjective_50",
+        "005_random_sv_50",
+        "003_different_sv_subjective_50",
+        "046_duplicates_004_sv_100",
+        "018_duplicates_001_sv_100",
+        "047_duplicates_003_sv_100"
+      ],
+      "tools": [
+        "panhard-v3-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
       ]
     }
   ]

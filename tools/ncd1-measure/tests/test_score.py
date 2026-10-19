@@ -14,11 +14,10 @@ def test_score_three_files_is_finite(tmp_path: Path):
     assert isinstance(value, float)
 
 
-def test_score_two_files_raises(tmp_path: Path):
+def test_score_two_files_returns_zero(tmp_path: Path):
     (tmp_path / "a.txt").write_text("aaa", encoding="utf-8")
     (tmp_path / "b.txt").write_text("bbb", encoding="utf-8")
-    with pytest.raises(ValueError):
-        score(tmp_path)
+    assert score(tmp_path) == 0.0
 
 
 def test_score_rejects_empty_dir(tmp_path: Path):

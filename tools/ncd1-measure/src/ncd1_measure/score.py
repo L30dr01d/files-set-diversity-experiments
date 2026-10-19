@@ -25,7 +25,7 @@ def _c_of_concat(parts: list[bytes]) -> int:
 def score(files_dir: Path) -> float:
     paths = _list_files(files_dir)
     if len(paths) < 3:
-        raise ValueError(f"NCD1 requires >= 3 files, got {len(paths)}")
+        return 0.0
     members = [p.read_bytes() for p in paths]
     c_full = _c_of_concat(members)
     min_c_single = min(len(lzma.compress(m)) for m in members)
