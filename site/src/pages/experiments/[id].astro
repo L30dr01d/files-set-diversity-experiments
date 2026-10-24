@@ -1,0 +1,37 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import DownloadIcon from '../../components/DownloadIcon.astro';
+import { loadExperiments } from '../../data/experiments';
+import type { Experiment } from '../../data/experiments';
+
+export function getStaticPaths() {
+  return loadExperiments().map(experiment => ({
+    params: { id: experiment.id },
+    props: { experiment },
+  }));
+}
+
+interface Props { experiment: Experiment }
+const { experiment: { id, title, hasSvg, hasPng } } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title={title} viewer>
+  <header>
+    <a class="back-link" href={base}>← Experiments</a>
+    <h1>{title}</h1>
+    <nav aria-label="Download plot">
+      {hasPng
+        ? <a href={`${base}plots/${id}.png`} download={`${id}.png`} role="button" class="secondary outline" aria-label="Download PNG"><DownloadIcon /> PNG</a>
+        : <button class="secondary outline" disabled title="PNG file was not found" aria-label="Download PNG"><DownloadIcon /> PNG</button>}
+      {hasSvg
+        ? <a href={`${base}plots/${id}.svg`} download={`${id}.svg`} role="button" aria-label="Download SVG"><DownloadIcon /> SVG</a>
+        : <button disabled title="SVG file was not found" aria-label="Download SVG"><DownloadIcon /> SVG</button>}
+    </nav>
+  </header>
+  <figure class="plot">
+    {hasSvg
+      ? <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} />
+      : <p>Plot .svg was not found.</p>}
+  </figure>
+</Layout>

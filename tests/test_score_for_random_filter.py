@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree import ElementTree
 from random import Random
 
 from experiment_runner.config import Experiment
@@ -138,6 +139,10 @@ def test_extra_tool_scores_each_remaining_set(tmp_path: Path) -> None:
     png = tmp_path / "output" / "rand.png"
     assert png.is_file()
     assert png.stat().st_size > 0
+    assert (
+        ElementTree.parse(png.with_suffix(".svg")).getroot().tag
+        == "{http://www.w3.org/2000/svg}svg"
+    )
 
 
 def test_one_tool_skips_extra_scoring(tmp_path: Path) -> None:

@@ -1,0 +1,17 @@
+{
+  "name": "experiment-gallery",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@anyblades/blades": "3.0.0",
+    "astro": "7.4.2"
+  }
+}

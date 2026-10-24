@@ -25,6 +25,7 @@ where = ["src"]
 
 [tool.uv.workspace]
 members = ["tools/*"]
+exclude = ["tools/__pycache__"]
 
 [tool.uv.sources]
 poisson-measure = { workspace = true }

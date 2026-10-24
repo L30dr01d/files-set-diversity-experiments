@@ -61,10 +61,13 @@ def run_measure_per_set(
     png = output_dir / f"{experiment.id}.png"
     try:
         fig.savefig(png, dpi=180)
+        fig.savefig(png.with_suffix(".svg"))
     finally:
         plt.close(fig)
     if not png.is_file():
         raise RuntimeError(f"PNG not written: {png}")
+    if not png.with_suffix(".svg").is_file():
+        raise RuntimeError(f"SVG not written: {png.with_suffix('.svg')}")
     return results
 
 

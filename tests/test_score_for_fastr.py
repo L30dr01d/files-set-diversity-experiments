@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree import ElementTree
 
 from experiment_runner.config import Experiment
 from experiment_runner.score_for_fastr import (
@@ -108,6 +109,10 @@ def test_run_writes_png_and_scores_one_hundred(tmp_path: Path) -> None:
     png = tmp_path / "output" / "fastr.png"
     assert png.is_file()
     assert png.stat().st_size > 0
+    assert (
+        ElementTree.parse(png.with_suffix(".svg")).getroot().tag
+        == "{http://www.w3.org/2000/svg}svg"
+    )
     entry = result["ds_one"]["FAST++"][100]
     assert entry["kept_count"] == 20
     assert entry["reduce_seconds"] is None

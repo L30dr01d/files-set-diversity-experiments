@@ -1,0 +1,83 @@
+---
+import '@anyblades/blades';
+
+interface Props {
+  title: string;
+  viewer?: boolean;
+}
+const { title, viewer = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main class:list={[viewer ? 'container-fluid viewer' : 'container']}>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  html[data-theme="light"] {
+    --pico-background-color: #f6f8fa;
+    --pico-color: #253244;
+    --pico-muted-color: #657489;
+    --pico-muted-border-color: #e3e8ef;
+    --pico-primary: #315e8a;
+    --pico-primary-background: var(--pico-primary);
+    --pico-primary-border: var(--pico-primary);
+    --pico-primary-hover: #25496d;
+    --pico-primary-hover-background: var(--pico-primary-hover);
+    --pico-primary-hover-border: var(--pico-primary-hover);
+    --pico-primary-focus: rgb(49 94 138 / .18);
+    --pico-card-background-color: #fff;
+    --pico-card-box-shadow: none;
+    --pico-border-radius: .5rem;
+    font-size: calc(var(--pico-font-size) * .9);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2 { overflow-wrap: anywhere; text-wrap: balance; font-weight: 600; }
+  a:focus-visible { outline: 2px solid var(--pico-primary); outline-offset: 4px; }
+  main.container { padding-block: 2rem; }
+  .gallery-header { padding-block: 1rem 2rem; max-width: 46rem; }
+  .gallery-header h1 { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.15; letter-spacing: -.035em; margin-bottom: .75rem; }
+  .gallery-header p { color: var(--pico-muted-color); font-size: .9rem; line-height: 1.6; margin: 0; }
+  .experiment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 1.25rem;
+  }
+  .experiment-card { display: block; color: inherit; text-decoration: none; min-width: 0; }
+  .experiment-card article { height: 100%; margin: 0; padding: 0; overflow: hidden; border: 1px solid var(--pico-muted-border-color); border-radius: .625rem; }
+  .experiment-card:hover article { border-color: var(--pico-primary); }
+  .experiment-card:hover h2 { color: var(--pico-primary); }
+  .experiment-card:active { opacity: .85; }
+  .experiment-card img, .preview-placeholder { width: 100%; aspect-ratio: 16 / 9; border-bottom: 1px solid var(--pico-muted-border-color); }
+  .experiment-card img { padding: .5rem; object-fit: contain; background: var(--pico-card-background-color); }
+  .preview-placeholder { display: grid; place-items: center; margin: 0; background: var(--pico-card-sectioning-background-color); color: var(--pico-muted-color); font-size: .85rem; }
+  .experiment-card h2 { font-size: .9rem; line-height: 1.45; text-wrap: pretty; margin: 0; padding: .875rem 1rem 1rem; }
+  .viewer { min-height: 100svh; display: flex; flex-direction: column; gap: 1rem; padding: 1rem; }
+  .viewer header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: .75rem 1rem; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: .625rem; }
+  .viewer h1 { font-size: 1.1rem; line-height: 1.4; letter-spacing: -.015em; margin: 0; }
+  .back-link { font-size: .85rem; font-weight: 500; text-decoration: none; padding-block: .5rem; }
+  .viewer nav { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .viewer nav :is(a, button) { margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: .375em; min-height: 44px; padding: .5rem .75rem; font-size: .8rem; }
+  .plot { flex: 1; display: grid; place-items: center; margin: 0; min-width: 0; min-height: 60svh; padding: 1rem; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: .625rem; }
+  .plot img { width: 100%; height: auto; max-height: 85svh; object-fit: contain; }
+  .plot p { margin: 0; color: var(--pico-muted-color); font-size: .95rem; text-align: center; }
+  @media (max-width: 640px) {
+    main.container { padding-block: 1rem; }
+    .gallery-header { padding-block: 1rem 1.5rem; }
+    .viewer { padding: .75rem; }
+    .viewer header { grid-template-columns: minmax(0, 1fr) auto; gap: .75rem; padding: .75rem; }
+    .viewer h1 { grid-column: 1 / -1; grid-row: 2; }
+    .viewer nav { justify-self: end; }
+    .plot { padding: .5rem; }
+  }
+</style>

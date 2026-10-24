@@ -1,0 +1,27 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { loadExperiments } from '../data/experiments';
+
+const experiments = loadExperiments();
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Text Set Diversity Experiments">
+  <header class="gallery-header">
+    <h1>Text Set Diversity Experiments</h1>
+    <p>Latest results. Select a plot to view it and download the original files.</p>
+  </header>
+  <section class="experiment-grid" aria-label="Experiment plots">
+    {experiments.map(({ id, title, hasSvg }) => (
+      <a class="experiment-card" href={`${base}experiments/${id}/`}>
+        <article>
+          {hasSvg
+            ? <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} loading="lazy" />
+            : <p class="preview-placeholder">SVG preview unavailable</p>}
+          <h2>{title}</h2>
+        </article>
+      </a>
+    ))}
+  </section>
+  {experiments.length === 0 && <p>No experiments configured.</p>}
+</Layout>

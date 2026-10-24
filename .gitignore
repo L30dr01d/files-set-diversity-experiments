@@ -4,3 +4,7 @@ output/
 __pycache__/
 *.egg-info/
 .worktrees/
+site/node_modules/
+site/.astro/
+site/dist/
+site/public/plots/

@@ -1,15 +1,19 @@
 # ci-experiments
 
-Config-driven diversity experiments. Edit `experiments.json`, push, download PNG artifacts from the Actions run.
+Config-driven diversity experiments. Edit `experiments.json`, push, and browse the latest plots on GitHub Pages or download PNG/SVG artifacts from the Actions run.
 
 ```bash
-uv sync
+uv sync --python 3.14 --extra fastr
 uv run pytest
 uv run python -m experiment_runner matrix
-uv run python -m experiment_runner run algo_similar_vs_diverse
+uv run python -m experiment_runner run 05_super_random_3
 ```
 
-CI runs Python 3.14. `score_for_fastr` needs FAST-R (`uv sync --extra fastr` on 3.14). Panhard needs `xz` and `bc` on PATH.
+Run these commands from the repository root. Python 3.14 and the `fastr` extra
+install all experiment dependencies, including FAST-R. Plain `uv sync` installs
+the base dependencies only. CI also uses Python 3.14. Panhard needs `xz` and `bc`
+on PATH (`brew install xz bc` on macOS or `sudo apt-get install xz-utils bc` on
+Debian/Ubuntu).
 
 Experiment types: `score_per_measure` (scatter per measure), `measure_per_set` (bar chart per dataset), `score_for_fastr` (FAST++ / FAST-CS budget lines), `score_for_random_filter` (random-filter steps; `tools[0]` filters, every tool is plotted).
 `measure_per_set`, `score_for_fastr`, and `score_for_random_filter` use the same color for each measure: `panhard-v3-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red.
@@ -18,9 +22,28 @@ A raising measure, reduce, or filter is the same: stderr warning, `null`, contin
 A worker that dies (including memory exhaustion) is also `null`; the rest of that experiment still runs.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
-Each run writes `output/<id>.png`.
+Each run writes `output/<id>.png` and `output/<id>.svg` from the same plot.
 
-Dataset helper scripts:
+## Experiment gallery
+
+The static site in `site/` uses Astro and locally bundled Blades CSS.
+
+```bash
+mkdir -p site/public/plots
+cp output/*.{png,svg} site/public/plots/
+npm --prefix site install
+npm --prefix site test
+npm --prefix site run dev
+```
+
+`npm --prefix site run build` writes `site/dist/`; `npm --prefix site run preview`
+serves that production build. To test a repository subpath:
+
+```bash
+SITE_URL=https://example.github.io BASE_PATH=/ci-experiments/ npm --prefix site run build
+```
+
+## Dataset helper scripts
 
 ```bash
 python tools/copy_file.py --input /path/to/file --output-dir datasets/027_one_sv_file_25 --count 25

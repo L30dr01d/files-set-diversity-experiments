@@ -1,5 +1,8 @@
 import time
 from pathlib import Path
+from xml.etree import ElementTree
+
+import pytest
 
 from experiment_runner.config import Experiment
 from experiment_runner.score_per_measure import (
@@ -88,12 +91,47 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     png = output_dir / "ex1.png"
     assert png.is_file()
     assert png.stat().st_size > 0
-    assert not (output_dir / "ex1.svg").exists()
+    assert (
+        ElementTree.parse(output_dir / "ex1.svg").getroot().tag
+        == "{http://www.w3.org/2000/svg}svg"
+    )
     out = capsys.readouterr().out
     assert "Scores" in out
     assert "Evaluation time (seconds)" in out
     assert "ds_one" in out and "ds_two" in out
     assert "fake-measure" in out and "other-measure" in out
+
+
+def test_svg_save_failure_closes_figure(tmp_path: Path, monkeypatch) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
+    dataset = tmp_path / "datasets" / "ds_one"
+    dataset.mkdir(parents=True)
+    (dataset / "a.txt").write_text("a")
+    experiment = Experiment(
+        "ex1", "score_per_measure", "Title", ("ds_one",), ("fake-measure",)
+    )
+    savefig = Figure.savefig
+    figures = []
+
+    def fail_svg(fig, path, **kwargs):
+        figures.append(fig)
+        if Path(path).suffix == ".svg":
+            raise OSError("SVG save failed")
+        return savefig(fig, path, **kwargs)
+
+    monkeypatch.setattr(Figure, "savefig", fail_svg)
+    with pytest.raises(OSError, match="SVG save failed"):
+        run_score_per_measure(
+            experiment,
+            tmp_path,
+            score_fns={"fake-measure": lambda _: 0.4},
+            output_dir=tmp_path / "output",
+        )
+    assert len(figures) == 2
+    assert figures[0] is figures[1]
+    assert not plt.fignum_exists(figures[0].number)
 
 
 def test_run_prints_job_size_and_per_cell_timing(tmp_path: Path, capsys) -> None:

@@ -1,4 +1,5 @@
 from pathlib import Path
+from xml.etree import ElementTree
 
 from experiment_runner.config import Experiment
 from experiment_runner.measure_per_set import plot_bars, run_measure_per_set
@@ -45,6 +46,10 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     png = output_dir / "bars.png"
     assert png.is_file()
     assert png.stat().st_size > 0
+    assert (
+        ElementTree.parse(png.with_suffix(".svg")).getroot().tag
+        == "{http://www.w3.org/2000/svg}svg"
+    )
     out = capsys.readouterr().out
     assert "Scores" in out
     assert "Evaluation time (seconds)" in out
