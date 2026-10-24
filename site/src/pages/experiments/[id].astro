@@ -12,7 +12,7 @@ export function getStaticPaths() {
 }
 
 interface Props { experiment: Experiment }
-const { experiment: { id, title, hasSvg, hasPng } } = Astro.props;
+const { experiment: { id, title, hasSvg, hasPng, disable_reason } } = Astro.props;
 const base = import.meta.env.BASE_URL;
 ---
 
@@ -21,16 +21,18 @@ const base = import.meta.env.BASE_URL;
     <a class="back-link" href={base}>← Experiments</a>
     <h1>{title}</h1>
     <nav aria-label="Download plot">
-      {hasPng
+      {!disable_reason && hasPng
         ? <a href={`${base}plots/${id}.png`} download={`${id}.png`} role="button" class="secondary outline" aria-label="Download PNG"><DownloadIcon /> PNG</a>
-        : <button class="secondary outline" disabled title="PNG file was not found" aria-label="Download PNG"><DownloadIcon /> PNG</button>}
-      {hasSvg
+        : <button class="secondary outline" disabled title={disable_reason ?? "PNG file was not found"} aria-label="Download PNG"><DownloadIcon /> PNG</button>}
+      {!disable_reason && hasSvg
         ? <a href={`${base}plots/${id}.svg`} download={`${id}.svg`} role="button" aria-label="Download SVG"><DownloadIcon /> SVG</a>
-        : <button disabled title="SVG file was not found" aria-label="Download SVG"><DownloadIcon /> SVG</button>}
+        : <button disabled title={disable_reason ?? "SVG file was not found"} aria-label="Download SVG"><DownloadIcon /> SVG</button>}
     </nav>
   </header>
   <figure class="plot">
-    {hasSvg
+    {disable_reason
+      ? <p>{disable_reason}</p>
+      : hasSvg
       ? <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} />
       : <p>Plot .svg was not found.</p>}
   </figure>

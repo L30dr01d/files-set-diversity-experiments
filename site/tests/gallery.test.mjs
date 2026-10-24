@@ -15,7 +15,8 @@ const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 200"><tex
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=', 'base64');
 
 function elements(html, tag) {
-  return [...html.matchAll(new RegExp(`<${tag}\\b([^>]*)>`, 'g'))].map(([, text]) =>
+  return [...html.matchAll(/<([a-z][\w-]*)\b((?:"[^"]*"|'[^']*'|[^'">])*)>/gi)]
+    .filter(([, name]) => name === tag).map(([, , text]) =>
     Object.fromEntries([...text.matchAll(/([\w:-]+)(?:="([^"]*)"|='([^']*)'|=([^\s>]+))?/g)]
       .map(([, name, double, single, bare]) => [name, double ?? single ?? bare ?? ''])));
 }
@@ -98,6 +99,22 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
         assert.equal(elements(detail, 'button').filter(button => 'disabled' in button).length, missing.length);
       }
       for (const ext of missing) await writeFile(join(root, 'public', 'plots', `z_last.${ext}`), ext === 'png' ? png : svg);
+    }
+    for (const stale of [true, false]) {
+      await writeFile(metadata, JSON.stringify({ experiments: [{ ...entries[0], disable_reason: 'Paused <script>alert(1)</script> & slow' }] }));
+      if (!stale) {
+        for (const ext of ['svg', 'png']) await rm(join(root, 'public', 'plots', `z_last.${ext}`));
+      }
+      const result = build('/');
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      for (const file of ['index.html', 'experiments/z_last/index.html']) {
+        const html = await readFile(join(root, 'dist', file), 'utf8');
+        assert.match(html, /Paused &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; slow/);
+        assert.equal(elements(html, 'img').length, 0);
+        assert.equal(elements(html, 'script').length, 0);
+        assert.equal(elements(html, 'a').filter(link => 'download' in link).length, 0);
+        assert.ok(!html.includes('SVG preview unavailable') && !html.includes('Plot .svg was not found.'));
+      }
     }
     await writeFile(metadata, JSON.stringify({ experiments: [{ id: '../outside', title: 'Unsafe' }] }));
     const unsafe = build('/');

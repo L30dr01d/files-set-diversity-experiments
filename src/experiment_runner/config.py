@@ -26,6 +26,7 @@ class Experiment:
     title: str
     datasets: tuple[str, ...]
     tools: tuple[str, ...]
+    disable_reason: str | None = None
 
 
 def _require_nonempty_str(value: object, field: str) -> str:
@@ -73,6 +74,10 @@ def load_experiments(path: Path) -> list[Experiment]:
                 title=_require_nonempty_str(raw.get("title"), "title"),
                 datasets=_require_name_tuple(raw.get("datasets"), "datasets"),
                 tools=_require_name_tuple(raw.get("tools"), "tools"),
+                disable_reason=(
+                    _require_nonempty_str(raw["disable_reason"], "disable_reason")
+                    if "disable_reason" in raw else None
+                ),
             )
         )
     return experiments

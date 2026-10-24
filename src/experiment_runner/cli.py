@@ -14,7 +14,7 @@ from experiment_runner.score_per_measure import run_score_per_measure
 
 
 def matrix_payload(experiments: Sequence[Experiment]) -> dict:
-    return {"include": [{"id": exp.id} for exp in experiments]}
+    return {"include": [{"id": exp.id} for exp in experiments if exp.disable_reason is None]}
 
 
 def _parser() -> argparse.ArgumentParser:

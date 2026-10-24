@@ -173,3 +173,28 @@ def test_run_dispatches_score_for_random_filter(tmp_path: Path, monkeypatch):
     assert main(["run", "rand"], root=root) == 0
     assert called["type"] == "score_for_random_filter"
     assert (root / "output" / "rand.png").is_file()
+
+
+def test_disabled_experiment_is_excluded_from_matrix_but_runs_manually(tmp_path, monkeypatch, capsys):
+    _layout(tmp_path)
+    config = tmp_path / "experiments.json"
+    payload = json.loads(config.read_text())
+    payload["experiments"][0]["disable_reason"] = "Temporarily too slow"
+    config.write_text(json.dumps(payload))
+    assert main(["matrix"], root=tmp_path) == 0
+    assert json.loads(capsys.readouterr().out) == {"include": []}
+    called = []
+    monkeypatch.setattr("experiment_runner.cli.run_score_per_measure", lambda exp, *args, **kwargs: called.append(exp.id))
+    assert main(["run", "ex1"], root=tmp_path) == 0
+    assert called == ["ex1"]
+
+
+def test_matrix_rejects_invalid_disable_reasons(tmp_path, capsys):
+    _layout(tmp_path)
+    config = tmp_path / "experiments.json"
+    payload = json.loads(config.read_text())
+    for reason in [None, "", "  ", False, 42]:
+        payload["experiments"][0]["disable_reason"] = reason
+        config.write_text(json.dumps(payload))
+        assert main(["matrix"], root=tmp_path) == 1
+        assert "disable_reason" in capsys.readouterr().err

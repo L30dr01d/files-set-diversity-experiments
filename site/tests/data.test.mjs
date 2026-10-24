@@ -47,3 +47,20 @@ test('ordered metadata reports available plots and requires safe unique IDs', as
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test('disabled metadata preserves reasons and rejects invalid values', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'disabled-data-'));
+  const config = join(root, 'experiments.json');
+  try {
+    const entry = { id: 'disabled', title: 'Disabled', disable_reason: 'Too slow' };
+    await writeFile(config, JSON.stringify({ experiments: [entry] }));
+    assert.deepEqual(loadExperiments(config, root), [{ ...entry, hasSvg: false, hasPng: false }]);
+    for (const reason of [null, '', '  ', false, 42]) {
+      await writeFile(config, JSON.stringify({ experiments: [{ ...entry, disable_reason: reason }] }));
+      assert.throws(() => loadExperiments(config, root), /disable_reason/);
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

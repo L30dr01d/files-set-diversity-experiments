@@ -35,12 +35,12 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     )
     assert result == {
         "ds_one": {
-            "fake-measure": {"value": 0.1, "seconds": 1.0},
-            "other-measure": {"value": 0.3, "seconds": 1.0},
+            "fake-measure": {"value": 0.1, "seconds": 1.0, "peak_memory_mib": None},
+            "other-measure": {"value": 0.3, "seconds": 1.0, "peak_memory_mib": None},
         },
         "ds_two": {
-            "fake-measure": {"value": 0.2, "seconds": 1.0},
-            "other-measure": {"value": 0.4, "seconds": 1.0},
+            "fake-measure": {"value": 0.2, "seconds": 1.0, "peak_memory_mib": None},
+            "other-measure": {"value": 0.4, "seconds": 1.0, "peak_memory_mib": None},
         },
     }
     png = output_dir / "bars.png"

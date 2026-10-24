@@ -41,7 +41,7 @@ def test_workflow_uses_verified_latest_stable_action_releases():
 
 def test_workflow_builds_pages_from_complete_current_run_on_default_branch():
     site = TEXT.split("\n  site:\n")[1].split("\n  deploy:\n")[0]
-    assert "needs: experiment" in site
+    assert "needs: [matrix, experiment]" in site
     assert "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)" in site
     assert "merge-multiple: true" in site
     assert "path: site/public/plots" in site
@@ -72,3 +72,13 @@ def test_workflow_serializes_deployment_without_freshness_check():
     assert "gh api" not in deploy
     assert "uses: actions/deploy-pages@v5.0.1\n        id: deployment" in deploy
     assert "always()" not in deploy
+
+
+def test_empty_matrix_skips_experiments_but_allows_gallery():
+    experiment = TEXT.split("\n  experiment:\n")[1].split("\n  site:\n")[0]
+    site = TEXT.split("\n  site:\n")[1].split("\n  deploy:\n")[0]
+    assert "if: needs.matrix.outputs.matrix != '{\"include\":[]}'" in experiment
+    assert "!cancelled()" in site
+    assert "needs.matrix.result == 'success'" in site
+    assert "needs.experiment.result == 'success' || needs.experiment.result == 'skipped'" in site
+    assert "if: needs.experiment.result == 'success'" in site

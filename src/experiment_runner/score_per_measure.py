@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -7,10 +8,10 @@ from pathlib import Path
 
 from experiment_runner.config import Experiment
 from experiment_runner.paths import dataset_dir, load_score
-from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_score
+from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_score_with_memory
 
 ScoreFn = Callable[[Path], float]
-SCORE_WORKERS = 2
+SCORE_WORKERS = os.cpu_count() or 1
 
 
 def _format_cell(value: object, precision: int) -> str:
@@ -28,9 +29,9 @@ def measure_dataset(
 ) -> dict:
     clock = monotonic or time.monotonic
     t0 = clock()
-    value = call_score(score_fn, files_dir, timeout=timeout)
+    value, peak_memory_mib = call_score_with_memory(score_fn, files_dir, timeout=timeout)
     elapsed = clock() - t0
-    return {"value": value, "seconds": float(elapsed)}
+    return {"value": value, "seconds": float(elapsed), "peak_memory_mib": peak_memory_mib}
 
 
 def run_score_per_measure(
@@ -75,8 +76,10 @@ def run_score_per_measure(
             done += 1
             value = measured["value"]
             value_s = "null" if value is None else f"{float(value):.6f}"
+            memory_s = _format_cell(measured["peak_memory_mib"], 3).strip()
             print(
-                f"[{done}/{total}] {name}  {tool}  {measured['seconds']:.3f}s  {value_s}",
+                f"[{done}/{total}] {name}  {tool}  {measured['seconds']:.3f}s  {value_s}  "
+                f"peak RSS {memory_s} MiB",
                 flush=True,
             )
 
@@ -84,6 +87,7 @@ def run_score_per_measure(
     for title, field, precision in (
         ("Scores", "value", 6),
         ("Evaluation time (seconds)", "seconds", 3),
+        ("Peak observed RSS (MiB)", "peak_memory_mib", 3),
     ):
         print(title)
         print(

@@ -1,11 +1,13 @@
-import time
+import os
 from pathlib import Path
+from threading import Barrier
 from xml.etree import ElementTree
 
 import pytest
 
 from experiment_runner.config import Experiment
 from experiment_runner.score_per_measure import (
+    SCORE_WORKERS,
     measure_dataset,
     plot_scores,
     run_score_per_measure,
@@ -18,7 +20,7 @@ def test_measure_dataset_times_injected_score(tmp_path: Path) -> None:
     measured = measure_dataset(
         tmp_path, score_fn=lambda path: 0.4, monotonic=lambda: next(ticks)
     )
-    assert measured == {"value": 0.4, "seconds": 0.25}
+    assert measured == {"value": 0.4, "seconds": 0.25, "peak_memory_mib": None}
 
 
 def test_measure_dataset_timeout_returns_null(tmp_path: Path) -> None:
@@ -39,7 +41,7 @@ def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
         datasets=("ds_one",),
         tools=("hang-measure",),
     )
-    run_score_per_measure(
+    results = run_score_per_measure(
         experiment,
         root,
         score_fns={"hang-measure": hang_score},
@@ -47,6 +49,10 @@ def test_run_prints_null_for_timed_out_score(tmp_path: Path, capsys) -> None:
         output_dir=tmp_path / "output",
     )
     out = capsys.readouterr().out
+    peak = results["ds_one"]["hang-measure"]["peak_memory_mib"]
+    assert peak is not None and peak > 0
+    assert f"peak RSS {peak:.3f} MiB" in out
+    assert "Peak observed RSS (MiB)" in out
     assert "null" in out
 
 
@@ -80,12 +86,12 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     )
     assert result == {
         "ds_one": {
-            "fake-measure": {"value": 0.1, "seconds": 1.0},
-            "other-measure": {"value": 0.3, "seconds": 1.0},
+            "fake-measure": {"value": 0.1, "seconds": 1.0, "peak_memory_mib": None},
+            "other-measure": {"value": 0.3, "seconds": 1.0, "peak_memory_mib": None},
         },
         "ds_two": {
-            "fake-measure": {"value": 0.2, "seconds": 1.0},
-            "other-measure": {"value": 0.4, "seconds": 1.0},
+            "fake-measure": {"value": 0.2, "seconds": 1.0, "peak_memory_mib": None},
+            "other-measure": {"value": 0.4, "seconds": 1.0, "peak_memory_mib": None},
         },
     }
     png = output_dir / "ex1.png"
@@ -97,6 +103,7 @@ def test_run_prints_tables_and_writes_png(tmp_path: Path, capsys) -> None:
     )
     out = capsys.readouterr().out
     assert "Scores" in out
+    assert "Peak observed RSS (MiB)" in out
     assert "Evaluation time (seconds)" in out
     assert "ds_one" in out and "ds_two" in out
     assert "fake-measure" in out and "other-measure" in out
@@ -153,8 +160,9 @@ def test_run_prints_job_size_and_per_cell_timing(tmp_path: Path, capsys) -> None
         output_dir=tmp_path / "output",
     )
     out = capsys.readouterr().out
-    assert "ex1: 1 datasets × 1 measures = 1 scores (2 in parallel)" in out
+    assert f"ex1: 1 datasets × 1 measures = 1 scores ({os.cpu_count() or 1} in parallel)" in out
     assert "[1/1] ds_one  fake-measure" in out
+    assert "peak RSS null MiB" in out
     assert "s" in out
 
 
@@ -173,17 +181,20 @@ def test_run_two_scores_overlap(tmp_path: Path) -> None:
         datasets=("ds_one", "ds_two"),
         tools=("hang-measure",),
     )
-    t0 = time.monotonic()
-    run_score_per_measure(
+    barrier = Barrier(2)
+
+    def score(_path):
+        barrier.wait(timeout=2)
+        return 0.42
+
+    results = run_score_per_measure(
         experiment,
         root,
-        score_fns={"hang-measure": hang_score},
-        timeout=0.5,
+        score_fns={"hang-measure": score},
+        workers=2,
         output_dir=tmp_path / "output",
     )
-    elapsed = time.monotonic() - t0
-    assert elapsed >= 0.5
-    assert elapsed < 0.95
+    assert [results[name]["hang-measure"]["value"] for name in experiment.datasets] == [0.42, 0.42]
 
 
 def test_plot_panels_use_title_folder_names_and_unit_ylim(tmp_path: Path) -> None:
@@ -289,3 +300,7 @@ def test_plot_annotates_null_and_skips_timed_out_point() -> None:
         assert "0.250000" in [text.get_text() for text in ax.texts]
     finally:
         plt.close(fig)
+
+
+def test_score_workers_match_cpu_count() -> None:
+    assert SCORE_WORKERS == (os.cpu_count() or 1)
