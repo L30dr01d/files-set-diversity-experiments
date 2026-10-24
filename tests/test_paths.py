@@ -17,7 +17,7 @@ def test_tool_dir_joins_tools(tmp_path: Path):
 
 
 def test_tool_module_name_replaces_hyphens():
-    assert tool_module_name("panhard-v3-measure") == "panhard_v3_measure"
+    assert tool_module_name("panhard-measure") == "panhard_measure"
     assert tool_module_name("levassor-measure") == "levassor_measure"
 
 

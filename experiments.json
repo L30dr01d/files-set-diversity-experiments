@@ -12,7 +12,7 @@
         "024_algos_15_tasks_1_variants_15"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -29,7 +29,7 @@
         "004_similar_sv_subjective_50"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -46,7 +46,7 @@
         "008_duplicates_sv_25x2_50"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -64,7 +64,7 @@
         "014_random_otk_150"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -84,7 +84,7 @@
         "021_duplicates_sv_5x2_cut_from_004_10"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -98,7 +98,7 @@
         "025_3_super_random_3"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -112,7 +112,7 @@
         "019_otk_1000"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure"
       ]
     },
@@ -158,7 +158,7 @@
         "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -181,7 +181,7 @@
         "030_one_sv_file_100"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -208,7 +208,7 @@
       ],
       "tools": [
         "levassor-measure",
-        "panhard-v3-measure",
+        "panhard-measure",
         "poisson-measure",
         "ncd1-measure"
       ]
@@ -222,7 +222,7 @@
         "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -237,7 +237,7 @@
         "011_duplicates_sv_75x2_150"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
@@ -257,18 +257,7 @@
         "037_031+034_1536",
         "038_032+033_1536",
         "039_032+034_1536",
-        "040_033+034_1536"
-      ],
-      "tools": [
-        "panhard-v3-measure",
-        "levassor-measure"
-      ]
-    },
-    {
-      "id": "16_deptycheck_2",
-      "type": "score_per_measure",
-      "title": "DepTyCheck modifications",
-      "datasets": [
+        "040_033+034_1536",
         "041_031+032+033_2304",
         "042_031+032+034_2304",
         "043_031+033+034_2304",
@@ -276,12 +265,12 @@
         "045_031+032+033+034_3072"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure"
       ]
     },
     {
-      "id": "18_similar_random_different_vs_duplicates",
+      "id": "17_similar_random_different_vs_duplicates",
       "type": "score_per_measure",
       "title": "Similar",
       "datasets": [
@@ -293,7 +282,7 @@
         "047_duplicates_003_sv_100"
       ],
       "tools": [
-        "panhard-v3-measure",
+        "panhard-measure",
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"

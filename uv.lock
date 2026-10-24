@@ -13,7 +13,7 @@ members = [
     "fast-filter",
     "levassor-measure",
     "ncd1-measure",
-    "panhard-v3-measure",
+    "panhard-measure",
     "poisson-measure",
     "random-filter",
 ]
@@ -27,9 +27,9 @@ dependencies = [
     { name = "levassor-measure" },
     { name = "matplotlib" },
     { name = "ncd1-measure" },
-    { name = "panhard-v3-measure" },
-    { name = "psutil" },
+    { name = "panhard-measure" },
     { name = "poisson-measure" },
+    { name = "psutil" },
     { name = "pytest" },
     { name = "random-filter" },
 ]
@@ -46,7 +46,7 @@ requires-dist = [
     { name = "levassor-measure", editable = "tools/levassor-measure" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "ncd1-measure", editable = "tools/ncd1-measure" },
-    { name = "panhard-v3-measure", editable = "tools/panhard-v3-measure" },
+    { name = "panhard-measure", editable = "tools/panhard-measure" },
     { name = "poisson-measure", editable = "tools/poisson-measure" },
     { name = "psutil", specifier = ">=5.9.5" },
     { name = "pytest", specifier = ">=8" },
@@ -786,9 +786,9 @@ wheels = [
 ]
 
 [[package]]
-name = "panhard-v3-measure"
+name = "panhard-measure"
 version = "0.1.0"
-source = { editable = "tools/panhard-v3-measure" }
+source = { editable = "tools/panhard-measure" }
 
 [package.optional-dependencies]
 dev = [

@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from panhard_v3_measure import score
-from panhard_v3_measure.score import score as score_fn
+from panhard_measure import score
+from panhard_measure.score import score as score_fn
 
 
 def test_score_parses_script_stdout_and_passes_sorted_files(tmp_path: Path) -> None:

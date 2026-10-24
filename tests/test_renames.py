@@ -8,6 +8,12 @@ def test_levassor_measure_imports_score():
     assert callable(score)
 
 
+def test_panhard_measure_imports_score():
+    from panhard_measure import score
+
+    assert callable(score)
+
+
 def test_new_metric_is_gone():
     with pytest.raises(ImportError):
         importlib.import_module("new_metric")
@@ -15,7 +21,7 @@ def test_new_metric_is_gone():
 
 @pytest.mark.parametrize(
     "name",
-    ("levassor_metric", "poisson_metric", "ncd1_metric", "panhard_v3_metric"),
+    ("levassor_metric", "poisson_metric", "ncd1_metric", "panhard_v3_metric", "panhard_v3_measure"),
 )
 def test_old_measure_package_names_are_gone(name: str):
     with pytest.raises(ImportError):

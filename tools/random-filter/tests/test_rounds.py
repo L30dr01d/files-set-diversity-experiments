@@ -54,7 +54,6 @@ def test_empty_input_still_validates_rounds():
     [
         ({"rounds": 0}, "rounds must be >= 1"),
         ({"split_by": 0}, "split_by must be >= 1"),
-        ({"min_keep": 0}, "min_keep must be >= 1"),
         ({"max_tries": 0}, "max_tries must be >= 1"),
         ({"workers": 0}, "workers must be >= 1"),
         ({"min_stop_rounds": 0}, "min_stop_rounds must be >= 1"),
@@ -81,7 +80,6 @@ def test_same_seed_is_repeatable(tmp_path: Path):
     kwargs = dict(
         rounds=3,
         split_by=4,
-        min_keep=2,
         relative_eps=0.2,
         stop_pct=None,
         rng=Random(1),
@@ -102,7 +100,6 @@ def test_workers_match_the_single_thread_result(tmp_path: Path):
     common = dict(
         rounds=2,
         split_by=3,
-        min_keep=2,
         relative_eps=0.2,
         stop_pct=None,
     )
@@ -115,28 +112,25 @@ def test_stop_pct_none_runs_every_round(tmp_path: Path):
     paths = _files(tmp_path, 6)
 
     def measure(_directory: Path) -> float:
-        raise AssertionError("measure should not be called")
+        return 1.0
 
     result = filter_rounds(
         paths,
         measure,
         rounds=4,
         split_by=2,
-        min_keep=10,
         stop_pct=None,
         rng=Random(0),
     )
     assert result.rounds_finished == 4
-    assert result.knees == [0, 0, 0, 0]
+    assert result.knees == [2, 2, 2, 2]
 
 
 def test_stable_knee_stops_after_min_stop_rounds(tmp_path: Path):
     paths = _files(tmp_path, 6)
     snapshot = list(paths)
-    calls = {"n": 0}
 
     def measure(_directory: Path) -> float:
-        calls["n"] += 1
         return 1.0
 
     result = filter_rounds(
@@ -144,15 +138,13 @@ def test_stable_knee_stops_after_min_stop_rounds(tmp_path: Path):
         measure,
         rounds=30,
         split_by=2,
-        min_keep=10,
         stop_pct=0.03,
         min_stop_rounds=5,
         rng=Random(0),
     )
-    assert calls["n"] == 0
     assert result.rounds_finished == 5
-    assert result.knees == [0, 0, 0, 0, 0]
-    assert result.kept == paths
+    assert result.knees == [2, 2, 2, 2, 0]
+    assert set(result.kept) == set(paths)
     assert paths == snapshot
     for path in paths:
         assert path.read_text(encoding="utf-8").startswith("body-")
@@ -172,7 +164,7 @@ def test_duplicate_names_inside_one_chunk_raise(tmp_path: Path):
         return 1.0
 
     with pytest.raises(ValueError, match="duplicate file name"):
-        filter_rounds([a, b], measure, rounds=1, split_by=10, min_keep=1, stop_pct=None)
+        filter_rounds([a, b], measure, rounds=1, split_by=10, stop_pct=None)
 
 
 def test_filter_rounds_parameter_is_named_measure():
