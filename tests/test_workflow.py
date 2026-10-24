@@ -55,12 +55,14 @@ def test_workflow_builds_pages_from_complete_current_run_on_default_branch():
     assert "path: site/dist" in site
     assert "pages: read" in site
     assert "pages: write" not in site
-    assert "always()" not in site
+    assert "always()" in site
+    assert "!cancelled()" in site
 
 
 def test_workflow_serializes_deployment_without_freshness_check():
     deploy = TEXT.split("\n  deploy:\n")[1]
     assert "needs: site" in deploy
+    assert "success()" in deploy
     assert "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)" in deploy
     assert "pages: write" in deploy
     assert "id-token: write" in deploy
@@ -78,7 +80,9 @@ def test_empty_matrix_skips_experiments_but_allows_gallery():
     experiment = TEXT.split("\n  experiment:\n")[1].split("\n  site:\n")[0]
     site = TEXT.split("\n  site:\n")[1].split("\n  deploy:\n")[0]
     assert "if: needs.matrix.outputs.matrix != '{\"include\":[]}'" in experiment
+    assert "always()" in site
     assert "!cancelled()" in site
     assert "needs.matrix.result == 'success'" in site
-    assert "needs.experiment.result == 'success' || needs.experiment.result == 'skipped'" in site
-    assert "if: needs.experiment.result == 'success'" in site
+    assert "needs.experiment.result == 'success'" not in site
+    assert "if: needs.experiment.result != 'skipped'" in site
+    assert "continue-on-error: true" in site

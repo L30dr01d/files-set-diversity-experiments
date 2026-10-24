@@ -15,9 +15,9 @@ the base dependencies only. CI also uses Python 3.14. Panhard needs `xz` and `bc
 on PATH (`brew install xz bc` on macOS or `sudo apt-get install xz-utils bc` on
 Debian/Ubuntu).
 
-Experiment types: `score_per_measure` (scatter per measure), `measure_per_set` (bar chart per dataset), `score_for_fastr` (FAST++ / FAST-CS budget lines), `score_for_random_filter` (random-filter steps; `tools[0]` filters, every tool is plotted).
-`measure_per_set`, `score_for_fastr`, and `score_for_random_filter` use the same color for each measure: `panhard-v3-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red.
-Each measure `score`, each FAST-R `reduce`, and each random-filter `filter_subset` call is killed after 1 hour and recorded as `null`.
+Experiment types: `score_per_measure` (scatter per measure), `measure_per_set` (bar chart per dataset), `score_for_fastr` (FAST++ / FAST-CS budget lines), `score_for_random_filter` (leftover-% boxes; `tools[0]` filters, every tool is plotted).
+`measure_per_set`, `score_for_fastr`, and `score_for_random_filter` use the same color for each measure: `panhard-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red.
+Each measure `score`, each FAST-R `reduce`, and each random-filter `filter_subset` call is killed after 6 hours (21600 seconds) and recorded as `null`.
 A raising measure, reduce, or filter is the same: stderr warning, `null`, continue.
 A worker that dies (including memory exhaustion) is also `null`; the rest of that experiment still runs.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
@@ -58,3 +58,6 @@ python tools/combine_datasets.py \
 ```
 
 `copy_idr_flat` writes to `{output}_{count}` (file count appended). `rename_lowercase_idents` keeps keywords and Capitalized words, renames lowercase-starting tokens; `--mode same-length` or `128`; optional `--seed` (default 0). `combine_datasets` writes every pair, then every triple, then all four; copied files are prefixed with the source id.
+
+Set an experiment's optional `disable_reason` to a nonempty string to exclude it from CI and display the reason in the gallery. Manual runs remain available.
+

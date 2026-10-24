@@ -122,12 +122,12 @@ def test_plot_bars_uses_pinned_measure_colors() -> None:
         type="measure_per_set",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("levassor-measure", "panhard-v3-measure"),
+        tools=("levassor-measure", "panhard-measure"),
     )
     results = {
         "ds_one": {
             "levassor-measure": {"value": 0.25, "seconds": 1.0},
-            "panhard-v3-measure": {"value": 0.40, "seconds": 1.0},
+            "panhard-measure": {"value": 0.40, "seconds": 1.0},
         },
     }
     fig = plot_bars(results, experiment)

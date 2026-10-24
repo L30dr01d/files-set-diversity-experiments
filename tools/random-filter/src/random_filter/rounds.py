@@ -25,7 +25,6 @@ def _validate_rounds(
     split_by: int,
     relative_eps: float,
     max_tries: int,
-    min_keep: int,
     stop_pct: float | None,
     min_stop_rounds: int,
     workers: int,
@@ -38,8 +37,6 @@ def _validate_rounds(
         raise ValueError(f"relative_eps must be >= 0, got {relative_eps}")
     if max_tries < 1:
         raise ValueError(f"max_tries must be >= 1, got {max_tries}")
-    if min_keep < 1:
-        raise ValueError(f"min_keep must be >= 1, got {min_keep}")
     if min_stop_rounds < 1:
         raise ValueError(f"min_stop_rounds must be >= 1, got {min_stop_rounds}")
     if workers < 1:
@@ -62,7 +59,6 @@ def filter_rounds(
     split_by: int = 50,
     relative_eps: float = 1e-5,
     max_tries: int = 10,
-    min_keep: int = 10,
     stop_pct: float | None = 0.03,
     min_stop_rounds: int = 20,
     workers: int = 1,
@@ -73,7 +69,6 @@ def filter_rounds(
         split_by=split_by,
         relative_eps=relative_eps,
         max_tries=max_tries,
-        min_keep=min_keep,
         stop_pct=stop_pct,
         min_stop_rounds=min_stop_rounds,
         workers=workers,
@@ -99,7 +94,6 @@ def filter_rounds(
                     measure,
                     relative_eps=relative_eps,
                     max_tries=max_tries,
-                    min_keep=min_keep,
                     rng=Random(seed),
                 )
                 for chunk, seed in zip(chunks, seeds)

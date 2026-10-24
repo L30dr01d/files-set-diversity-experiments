@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if ! xz --version > /dev/null 2> /dev/null; then
+  echo "Cannot find \`xz\` command" >&2
+  exit 2
+fi
+
+usage() {
+  echo "Usage: $0 <files-or-dirs> ..." >&2
+  exit 3
+}
+
+fileOrDirExists() {
+  if [ ! -r "$1" ] || [ ! -f "$1" ] && [ ! -d "$1" ]; then
+    echo "Argument \"$1\" must be a readable file or directory" >&2
+    exit 4
+  fi
+}
+
+# Prints a count of bytes of a compressed files
+compSize() {
+  { for f in "$@"; do cat "$f"; done; } | xz --format=raw --compress --stdout --no-warn --quiet | wc -c
+}
+
+if [ "$#" == "0" ] || [ "$#" == "1" ] && [ "$1" == "--help" ]; then
+  usage
+fi
+if [ "$1" == "--verbose" ]; then
+  VERBOSE=1
+  shift
+fi
+
+inputs=("$@")
+
+for input in "${inputs[@]}"; do
+  fileOrDirExists "$input" || exit
+done
+
+declare -a files
+for input in "${inputs[@]}"; do
+  readarray -t curr < <(find "$input" -type f)
+  files+=("${curr[@]}")
+done
+
+files_count="${#files[@]}"
+
+declare -a individual_lens
+individual_lens_sum=0
+for file in "${files[@]}"; do
+  individual_len="$(compSize "$file")"
+  individual_lens+=("$individual_len")
+  individual_lens_sum="$((individual_lens_sum + individual_len))"
+done
+
+all_lens="$(compSize "${files[@]}")"
+
+relative_lens_sum=0
+for ((oi = 0; oi < files_count && files_count > 1; ++oi)); do
+
+  files_but_one=()
+  if ((oi >= 1)); then
+    files_but_one+=("${files[@]::$oi}")
+  fi
+  if ((oi + 1 < files_count)); then
+    files_but_one+=("${files[@]:(($oi + 1))}")
+  fi
+
+  all_but_one_lens="$(compSize "${files_but_one[@]}")"
+  relative_len="$((all_lens - all_but_one_lens))"
+  relative_lens_sum="$((relative_lens_sum + relative_len))"
+
+  if [ -n "$VERBOSE" ]; then
+    relative_len_normalised="$(echo "scale=10; $relative_len / ${individual_lens[$oi]}" | bc)"
+    echo "$relative_len_normalised ${files[$oi]}" >&2
+  fi
+done
+
+echo "scale=10; $relative_lens_sum / $individual_lens_sum" | bc

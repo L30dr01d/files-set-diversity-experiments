@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "panhard-v3-measure"
+name = "panhard-measure"
 version = "0.1.0"
 description = "Whole-set panhard-xz diversity score for a directory of files."
 readme = "README.md"
@@ -17,4 +17,4 @@ dev = ["pytest>=8"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-panhard_v3_measure = ["panhard-xz"]
+panhard_measure = ["panhard-xz"]

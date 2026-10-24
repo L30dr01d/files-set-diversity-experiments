@@ -214,7 +214,7 @@ def test_plot_budget_grid_uses_pinned_measure_colors() -> None:
         type="score_for_fastr",
         title="Viewer title",
         datasets=("ds_one",),
-        tools=("levassor-measure", "panhard-v3-measure"),
+        tools=("levassor-measure", "panhard-measure"),
     )
     cell = {
         pct: {
@@ -222,7 +222,7 @@ def test_plot_budget_grid_uses_pinned_measure_colors() -> None:
             "reduce_seconds": None,
             "measures": {
                 "levassor-measure": {"value": 0.2, "seconds": 0.0},
-                "panhard-v3-measure": {"value": 0.3, "seconds": 0.0},
+                "panhard-measure": {"value": 0.3, "seconds": 0.0},
             },
         }
         for pct in BUDGET_PCTS

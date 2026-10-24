@@ -14,15 +14,15 @@ from experiment_runner.score_per_measure import ScoreFn, measure_dataset
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_timed
 from random_filter import SubsetResult
 
-SEED = 0
 RELATIVE_EPS = 1e-5
 MAX_TRIES = 10
-MIN_KEEP = 10
+RUN_COUNT = 10
+SEEDS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 
 FilterFn = Callable[..., SubsetResult]
 
 
-def _default_filter(paths, measure, *, relative_eps, max_tries, min_keep, rng):
+def _default_filter(paths, measure, *, relative_eps, max_tries, rng):
     from random_filter import filter_subset
 
     return filter_subset(
@@ -30,7 +30,6 @@ def _default_filter(paths, measure, *, relative_eps, max_tries, min_keep, rng):
         measure,
         relative_eps=relative_eps,
         max_tries=max_tries,
-        min_keep=min_keep,
         rng=rng,
     )
 
@@ -41,7 +40,6 @@ def _timed_filter(
     measure: ScoreFn,
     relative_eps: float,
     max_tries: int,
-    min_keep: int,
     seed: int,
 ):
     paths = [Path(p) for p in path_strs]
@@ -50,7 +48,6 @@ def _timed_filter(
         measure,
         relative_eps=relative_eps,
         max_tries=max_tries,
-        min_keep=min_keep,
         rng=Random(seed),
     )
 
@@ -67,6 +64,57 @@ def _remaining_names(remaining: Sequence[Path]) -> list[str]:
         duplicate = next(name for name in names if names.count(name) > 1)
         raise ValueError(f"repeated kept basename: {duplicate}")
     return names
+
+
+def _score_steps(
+    raw: SubsetResult,
+    *,
+    files_dir: Path,
+    filter_tool: str,
+    extra_tools: tuple[str, ...],
+    tools: tuple[str, ...],
+    score_fns: Mapping[str, ScoreFn],
+    monotonic,
+    timeout: float,
+    output_dir: Path,
+    dataset_name: str,
+    seed: int,
+) -> list[dict]:
+    serialized: list[dict] = []
+    for step in raw.steps:
+        measures = {
+            filter_tool: {"value": float(step.score), "seconds": None},
+        }
+        if extra_tools:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(
+                prefix="random-filter-kept-", dir=output_dir
+            ) as tmp:
+                dest = Path(tmp) / "kept"
+                stage_kept(files_dir, _remaining_names(step.remaining), dest)
+                for tool in extra_tools:
+                    measures[tool] = measure_dataset(
+                        dest,
+                        score_fn=score_fns[tool],
+                        monotonic=monotonic,
+                        timeout=timeout,
+                    )
+        serialized.append(
+            {
+                "index": int(step.index),
+                "remaining_count": int(step.remaining_count),
+                "remaining_pct": float(step.remaining_pct),
+                "measures": measures,
+            }
+        )
+        values = " ".join(
+            f"{tool}={_format_value(measures[tool]['value'])}" for tool in tools
+        )
+        print(
+            f"{dataset_name} run={seed} step={step.index} kept={step.remaining_count} {values}",
+            flush=True,
+        )
+    return serialized
 
 
 def run_score_for_random_filter(
@@ -92,73 +140,60 @@ def run_score_for_random_filter(
         files_dir = dataset_dir(root, dataset_name)
         names = list_basenames(files_dir)
         paths = [files_dir / name for name in names]
-        print(f"{dataset_name} {filter_tool}", flush=True)
-        t0 = clock()
-        raw = call_timed(
-            _timed_filter,
-            (
-                filter_fn,
-                tuple(str(p) for p in paths),
-                score_fns[filter_tool],
-                RELATIVE_EPS,
-                MAX_TRIES,
-                MIN_KEEP,
-                SEED,
-            ),
-            timeout=timeout,
-        )
-        filter_seconds = float(clock() - t0)
-        if raw is None:
-            results[dataset_name] = {
-                "filter_seconds": filter_seconds,
-                "steps": None,
-            }
-            print(
-                f"{dataset_name} kept=null "
-                + " ".join(f"{tool}=null" for tool in tools),
-                flush=True,
+        runs: list[dict] = []
+        for seed in SEEDS:
+            print(f"{dataset_name} run={seed} {filter_tool}", flush=True)
+            t0 = clock()
+            raw = call_timed(
+                _timed_filter,
+                (
+                    filter_fn,
+                    tuple(str(p) for p in paths),
+                    score_fns[filter_tool],
+                    RELATIVE_EPS,
+                    MAX_TRIES,
+                    seed,
+                ),
+                timeout=timeout,
             )
-            continue
-        if not isinstance(raw, SubsetResult):
-            raise TypeError("filter_fn must return a SubsetResult")
-        serialized: list[dict] = []
-        for step in raw.steps:
-            measures = {
-                filter_tool: {"value": float(step.score), "seconds": None},
-            }
-            if extra_tools:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                with tempfile.TemporaryDirectory(
-                    prefix="random-filter-kept-", dir=output_dir
-                ) as tmp:
-                    dest = Path(tmp) / "kept"
-                    stage_kept(files_dir, _remaining_names(step.remaining), dest)
-                    for tool in extra_tools:
-                        measures[tool] = measure_dataset(
-                            dest,
-                            score_fn=score_fns[tool],
-                            monotonic=monotonic,
-                            timeout=timeout,
-                        )
-            serialized.append(
+            filter_seconds = float(clock() - t0)
+            if raw is None:
+                runs.append(
+                    {
+                        "seed": seed,
+                        "filter_seconds": filter_seconds,
+                        "steps": None,
+                    }
+                )
+                print(
+                    f"{dataset_name} run={seed} kept=null "
+                    + " ".join(f"{tool}=null" for tool in tools),
+                    flush=True,
+                )
+                continue
+            if not isinstance(raw, SubsetResult):
+                raise TypeError("filter_fn must return a SubsetResult")
+            serialized = _score_steps(
+                raw,
+                files_dir=files_dir,
+                filter_tool=filter_tool,
+                extra_tools=extra_tools,
+                tools=tools,
+                score_fns=score_fns,
+                monotonic=monotonic,
+                timeout=timeout,
+                output_dir=output_dir,
+                dataset_name=dataset_name,
+                seed=seed,
+            )
+            runs.append(
                 {
-                    "index": int(step.index),
-                    "remaining_count": int(step.remaining_count),
-                    "remaining_pct": float(step.remaining_pct),
-                    "measures": measures,
+                    "seed": seed,
+                    "filter_seconds": filter_seconds,
+                    "steps": serialized,
                 }
             )
-            values = " ".join(
-                f"{tool}={_format_value(measures[tool]['value'])}" for tool in tools
-            )
-            print(
-                f"{dataset_name} step={step.index} kept={step.remaining_count} {values}",
-                flush=True,
-            )
-        results[dataset_name] = {
-            "filter_seconds": filter_seconds,
-            "steps": serialized,
-        }
+        results[dataset_name] = {"runs": runs}
 
     import matplotlib
 
@@ -182,6 +217,7 @@ def run_score_for_random_filter(
 
 def plot_steps_grid(results: dict, experiment: Experiment):
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
 
     datasets = list(experiment.datasets)
     tools = list(experiment.tools)
@@ -194,35 +230,73 @@ def plot_steps_grid(results: dict, experiment: Experiment):
         constrained_layout=True,
     )
     fig.suptitle(experiment.title)
-    filter_tool = tools[0]
+    n_tools = len(tools)
+    width = 0.8 / max(n_tools, 1)
     for row, dataset in enumerate(datasets):
         ax = axes[row][0]
         ax.set_title(f"{dataset} — random-filter")
-        ax.set_xlabel("step")
+        ax.set_xlabel("remaining %")
         ax.set_ylabel("Score")
         ax.set_ylim(0.0, 1.0)
-        steps = results[dataset]["steps"]
-        if not steps:
-            continue
-        xs = [int(step["index"]) for step in steps]
-        for i, tool in enumerate(tools):
-            ys = []
-            for step in steps:
-                value = step["measures"][tool]["value"]
-                ys.append(float("nan") if value is None else float(value))
-            ax.plot(xs, ys, marker="o", color=tool_color(tool, i), label=tool)
-        ax.set_xticks(xs)
-        for step in steps:
-            y = step["measures"][filter_tool]["value"]
-            if y is None:
+        runs = results[dataset].get("runs") or []
+        landings: dict[int, list[dict]] = {}
+        pct_by_count: dict[int, float] = {}
+        for run in runs:
+            steps = run.get("steps")
+            if not steps:
                 continue
-            ax.annotate(
-                f"{float(step['remaining_pct']):.1f}%\n{step['remaining_count']}",
-                (int(step["index"]), float(y)),
-                textcoords="offset points",
-                xytext=(0, 8),
-                ha="center",
+            seen_counts: set[int] = set()
+            for step in steps:
+                count = int(step["remaining_count"])
+                if count in seen_counts:
+                    continue
+                seen_counts.add(count)
+                landings.setdefault(count, []).append(step)
+                pct_by_count.setdefault(count, float(step["remaining_pct"]))
+        counts = sorted(landings, reverse=True)
+        if not counts:
+            continue
+        drew = False
+        for i, tool in enumerate(tools):
+            data: list[list[float]] = []
+            positions: list[float] = []
+            offset = (i - (n_tools - 1) / 2) * width
+            for j, count in enumerate(counts):
+                scores = []
+                for step in landings[count]:
+                    value = step["measures"][tool]["value"]
+                    if value is not None:
+                        scores.append(float(value))
+                if scores:
+                    data.append(scores)
+                    positions.append(j + offset)
+            if not data:
+                continue
+            bp = ax.boxplot(
+                data,
+                positions=positions,
+                widths=width * 0.85,
+                patch_artist=True,
+                manage_ticks=False,
             )
-        ax.legend(fontsize=8)
+            color = tool_color(tool, i)
+            for box in bp["boxes"]:
+                box.set_facecolor(color)
+            drew = True
+        ax.set_xticks(range(len(counts)))
+        ax.set_xticklabels(
+            [
+                f"{pct_by_count[count]:.1f}%\n{count}\nn={len(landings[count])}"
+                for count in counts
+            ]
+        )
+        if drew:
+            ax.legend(
+                handles=[
+                    Patch(facecolor=tool_color(tool, i), label=tool)
+                    for i, tool in enumerate(tools)
+                ],
+                fontsize=8,
+            )
         ax.grid(axis="y", alpha=0.3)
     return fig
