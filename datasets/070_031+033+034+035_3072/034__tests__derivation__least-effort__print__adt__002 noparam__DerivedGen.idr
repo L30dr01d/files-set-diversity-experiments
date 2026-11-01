@@ -1,0 +1,9 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%bPVfBJwdrefVUjgqeQckUUHdtVONwstrtEqjWeWiFvIQXzFKPOJStUZtoUgmCHMtJjTshpOXQjvLuERmJXusWsCsFVTlapwSznJBFOBasVBIARSxlisXsptVeImACOPS ElabReflection
+
+%tahBDsjDBsRXpcIBuaReGToSVySIlHKwGbkXOvbXjhhxvLstyvCWroaiQWqKfhvQerkqgxICmURunuWMDhSQrfdxTXKiuAYzUJnJrlSIoGQaHRVeJejxOSffQFUyZkJY fymihNtFnaCitURePElfZxOTxHxvHAosIslDBgfCilmqJvNsOdKhyYUDsLPdTYLSsJojyxiArqDJEIjVRxeEWlDQPpkddmAZYUsKonAisyCTKjVqzhDmOTiAjmgqOszJ @{MainCoreDerivator @{LeastEffort}} $ Fuel -> Gen MaybeEmpty Bool

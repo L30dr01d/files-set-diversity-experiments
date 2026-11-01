@@ -20,7 +20,7 @@ def _list_files(files_dir: Path) -> list[Path]:
 
 def score(files_dir: Path, *, script: Path | None = None) -> float:
     script = script or _VENDORED
-    paths = _list_files(files_dir)
+    paths = [path.resolve() for path in _list_files(files_dir)]
     result = subprocess.run(
         [str(script), *[str(p) for p in paths]],
         check=True,

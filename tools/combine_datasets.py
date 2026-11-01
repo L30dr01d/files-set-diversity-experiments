@@ -5,8 +5,10 @@ CLI usage:
     python tools/combine_datasets.py \\
       datasets/031_deptycheck_original_768 \\
       datasets/032_deptycheck_renamed_same_length_768 \\
-      datasets/033_deptycheck_renamed128_768 \\
-      datasets/034_deptycheck_renamed128_2_768
+      datasets/033_deptycheck_renamed_same_length_2_768 \\
+      datasets/034_deptycheck_renamed128_768 \\
+      datasets/035_deptycheck_renamed128_2_768 \\
+      --start 47 --max-level 4
 """
 
 from __future__ import annotations
@@ -28,9 +30,13 @@ def source_id(path: Path) -> str:
     return match.group("id")
 
 
-def combinations_in_order(paths: Sequence[Path]) -> list[tuple[Path, ...]]:
+def combinations_in_order(
+    paths: Sequence[Path],
+    max_level: int | None = None,
+) -> list[tuple[Path, ...]]:
+    top = len(paths) if max_level is None else min(max_level, len(paths))
     result: list[tuple[Path, ...]] = []
-    for k in range(2, len(paths) + 1):
+    for k in range(2, top + 1):
         result.extend(itertools.combinations(paths, k))
     return result
 
@@ -48,6 +54,7 @@ def combine(
     paths: Sequence[Path],
     output_parent: Path,
     start: int = 35,
+    max_level: int | None = None,
 ) -> list[Path]:
     if len(paths) < 2:
         raise ValueError("need at least two dataset directories")
@@ -64,7 +71,7 @@ def combine(
 
     dests: list[Path] = []
     number = start
-    for combo in combinations_in_order(paths):
+    for combo in combinations_in_order(paths, max_level=max_level):
         combo_ids = [source_id(path) for path in combo]
         count = sum(len(files_by_src[path]) for path in combo)
         dest = output_parent / f"{number:03d}_{'+'.join(combo_ids)}_{count}"
@@ -86,7 +93,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Combine dataset directories into every pair, then every triple, "
-            "then the full set. Copied files are prefixed with the source id."
+            "up to --max-level (default: all N). Copied files are prefixed "
+            "with the source id."
         )
     )
     parser.add_argument(
@@ -107,13 +115,24 @@ def main() -> None:
         default=35,
         help="First output number (default: 35).",
     )
+    parser.add_argument(
+        "--max-level",
+        type=int,
+        default=None,
+        help="Largest mix size to write (default: all the way to N inputs).",
+    )
     args = parser.parse_args()
     if len(args.inputs) < 2:
         parser.error("need at least two dataset directories")
     output_parent = (
         args.output_parent if args.output_parent is not None else args.inputs[0].parent
     )
-    dests = combine(args.inputs, output_parent, start=args.start)
+    dests = combine(
+        args.inputs,
+        output_parent,
+        start=args.start,
+        max_level=args.max_level,
+    )
     print(f"Wrote {len(dests)} datasets -> {output_parent}")
 
 

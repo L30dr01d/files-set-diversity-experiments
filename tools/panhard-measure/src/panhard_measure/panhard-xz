@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if ! xz --version > /dev/null 2> /dev/null; then
   echo "Cannot find \`xz\` command" >&2

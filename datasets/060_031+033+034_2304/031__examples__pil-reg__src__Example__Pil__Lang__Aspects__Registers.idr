@@ -1,0 +1,155 @@
+module Example.Pil.Lang.Aspects.Registers
+
+import public Data.Vect
+
+import public Decidable.Decidable
+import public Decidable.Equality
+
+import public Example.Pil.Lang.Aspects.Types
+
+%default total
+
+public export
+data Registers : Nat -> Type where
+  Base  : Vect rc (Maybe Type') -> Registers rc
+  Merge : Registers rc -> Registers rc -> Registers rc
+  With  : Registers rc -> (Fin rc, Maybe Type') -> Registers rc
+
+%name Registers regs
+
+public export
+DecEq (Registers rc) where
+
+  decEq (Base xs) (Base ys) = case (decEq xs ys) of
+    Yes Refl => Yes Refl
+    No up => No $ up . \case Refl => Refl
+
+  decEq (Merge r1 r2) (Merge s1 s2) = case (decEq r1 s1, decEq r2 s2) of
+    (Yes Refl, Yes Refl) => Yes Refl
+    (_, No us) => No $ us . \case Refl => Refl
+    (No up, _) => No $ up . \case Refl => Refl
+
+  decEq (With rs1 (r1, ty1)) (With rs2 (r2, ty2)) = case (decEq rs1 rs2, decEq r1 r2, decEq ty1 ty2) of
+    (Yes Refl, Yes Refl, Yes Refl) => Yes Refl
+    (_, _, No ur) => No $ ur . \case Refl => Refl
+    (_, No uq, _) => No $ uq . \case Refl => Refl
+    (No up, _, _) => No $ up . \case Refl => Refl
+
+  decEq (Base _)    (Merge _ _) = No $ \case Refl impossible
+  decEq (Base _)    (With _ _)  = No $ \case Refl impossible
+  decEq (Merge _ _) (Base _)    = No $ \case Refl impossible
+  decEq (Merge _ _) (With _ _)  = No $ \case Refl impossible
+  decEq (With _ _)  (Base _)    = No $ \case Refl impossible
+  decEq (With _ _)  (Merge _ _) = No $ \case Refl impossible
+
+public export
+AllUndefined : {rc : Nat} -> Registers rc
+AllUndefined = Base $ replicate rc Nothing
+
+--- Rules of merging of independent register types ---
+
+public export
+mergeSame : Maybe Type' -> Maybe Type' -> Maybe Type'
+mergeSame Nothing  _        = Nothing
+mergeSame (Just _) Nothing  = Nothing
+mergeSame (Just x) (Just y) = case decEq x y of
+  Yes _ => Just x
+  No  _ => Nothing
+
+namespace MergeSameProperties
+
+  export
+  mergeSame_idempotent : (x : _) -> mergeSame x x = x
+  mergeSame_idempotent Nothing = Refl
+  mergeSame_idempotent (Just x) = rewrite decEqSelfIsYes {x} in Refl
+
+  export
+  mergeSame_commutative : (x, y : _) -> mergeSame x y = mergeSame y x
+  mergeSame_commutative Nothing  Nothing  = Refl
+  mergeSame_commutative Nothing  (Just _) = Refl
+  mergeSame_commutative (Just _) Nothing  = Refl
+  mergeSame_commutative (Just x) (Just y) with (decEq x y)
+    mergeSame_commutative (Just x) (Just x) | Yes Refl = rewrite decEqSelfIsYes {x} in Refl
+    _                                       | No uxy   = rewrite snd $ decEqContraIsNo $ negEqSym uxy in Refl
+
+  export
+  mergeSame_nothing_absorbs_r : (x : _) -> mergeSame x Nothing = Nothing
+  mergeSame_nothing_absorbs_r Nothing  = Refl
+  mergeSame_nothing_absorbs_r (Just _) = Refl
+
+  export
+  mergeSame_associative : (x, y, z : _) -> (x `mergeSame` y) `mergeSame` z = x `mergeSame` (y `mergeSame` z)
+  mergeSame_associative Nothing  _        _        = Refl
+  mergeSame_associative (Just x) Nothing  _        = Refl
+  mergeSame_associative (Just x) (Just y) Nothing  = mergeSame_nothing_absorbs_r _
+  mergeSame_associative (Just x) (Just y) (Just z) with (decEq x y) | (decEq y z)
+    mergeSame_associative (Just x) (Just x) (Just x) | Yes Refl | Yes Refl = rewrite decEqSelfIsYes {x} in Refl
+    mergeSame_associative (Just _) (Just _) (Just _) | Yes Refl | No uyz   = rewrite snd $ decEqContraIsNo uyz in Refl
+    _                                                | No uxy   | Yes _    = rewrite snd $ decEqContraIsNo uxy in Refl
+    _                                                | No _     | No _     = Refl
+
+--- Eliminators for the `Registers` type ---
+
+public export
+index : Fin rc -> Registers rc -> Maybe Type'
+index i $ Base xs         = Vect.index i xs
+index i $ Merge r1 r2     = mergeSame (index i r1) (index i r2)
+index i $ With rs (n, ty) = if isYes $ decEq i n then ty else index i rs
+
+public export
+squash : Registers rc -> Vect rc $ Maybe Type'
+squash $ Base xs = xs
+squash $ Merge r1 r2 = zipWith mergeSame (squash r1) (squash r2)
+squash $ With rs (n, ty) = replaceAt n ty $ squash rs
+
+export
+squash_preserves_index : (i : Fin rc) -> (regs : Registers rc) -> index i (squash regs) = index i regs
+squash_preserves_index _ $ Base _ = Refl
+squash_preserves_index i $ Merge r1 r2 = rewrite zipWithIndexLinear mergeSame (squash r1) (squash r2) i in
+                                         rewrite squash_preserves_index i r1 in
+                                         rewrite squash_preserves_index i r2 in
+                                         Refl
+squash_preserves_index i $ With rs (n, ty) with (decEq i n)
+  squash_preserves_index i $ With rs (i, ty) | Yes Refl = replaceAtSameIndex _ _ _
+  squash_preserves_index i $ With rs (n, ty) | No co = rewrite replaceAtDiffIndexPreserves (squash rs) i n co ty in
+                                                       squash_preserves_index i rs
+
+--- Showing the registers state as a string ---
+
+Show (Maybe Type') where
+  show $ Just Bool'   = "Bool"
+  show $ Just Int'    = "Int"
+  show $ Just String' = "String"
+  show $ Nothing      = "-"
+
+export
+Show (Registers rc) where
+  show = show . squash
+
+--- Index-equivalence relation ---
+
+export infix 0 =%=
+
+-- Extensional equality regarding to the `index` function for any possible indexing argument.
+-- NOTICE: `x =%= x` when `x` is `Base` can be either using `EquivByRefl` or using `EquivSquashed`, which may be not so good
+public export
+data (=%=) : Registers rc -> Registers rc -> Type where
+  EquivByRefl : x =%= x
+  EquivMergeIdemp : Merge x x =%= x
+  EquivMergeComm : x `Merge` y =%= y `Merge` x
+  EquivMergeAssoc1 : (a `Merge` b) `Merge` c =%= a `Merge` (b `Merge` c)
+  EquivMergeAssoc2 : a `Merge` (b `Merge` c) =%= (a `Merge` b) `Merge` c
+  EquivSquashed : Base (squash x) =%= x
+  EquivWithed : {j : _} -> x `With` (j, index j x) =%= x
+
+public export
+(.ieq) : {y : _} -> x =%= y -> (i : _) -> Registers.index i x = index i y
+(.ieq) EquivByRefl i = Refl
+(.ieq) EquivMergeIdemp i = mergeSame_idempotent _
+(.ieq) EquivMergeComm i = mergeSame_commutative _ _
+(.ieq) EquivMergeAssoc1 i = mergeSame_associative _ _ _
+(.ieq) EquivMergeAssoc2 i = sym $ mergeSame_associative _ _ _
+(.ieq) EquivSquashed i = squash_preserves_index _ _
+(.ieq) (EquivWithed {j}) i = case decEq i j of
+  Yes Refl => rewrite decEqSelfIsYes {x=j} in Refl
+  No co    => rewrite snd $ decEqContraIsNo co in Refl

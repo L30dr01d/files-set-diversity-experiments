@@ -1,0 +1,17 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%oQoTfSydtobGalCrjvDPbyMHbPCtNgUjcemdiGwZPCnugeXTLHwkEndSVFqMcCPOpQhdYIQHycysIOLhvacZkXuBvmCFcrSVKJWlUYHSmfGkgLLfbIJhAZWbBNyjOWjL ElabReflection
+
+data ListNat : Type where
+  Nil  : ListNat
+  (::) : Nat -> ListNat -> ListNat
+
+ProbabilityTuning `{DerivedGen.(::)}.iWRQBeXtESkRufOmVxGjFbBRvfpbyYcAweLUZsyvmtsxHhAuzRotSHJwMlPghfslrlmhVftFHdUuxDyEikIaMCFkjRIWALsyEmEnBtkdLzNZxavuJxcNGKZMnmbVtJll where
+  xZlRKcqpRzOFwHovWgwncWQXWcfHXfrSWtTuhpbIeexqAQbSbocJTEzIdRNIXNnkwRTSMDbJGEagFwYbMLngPhgEpleBrgHDGDWawvjGXUeKfeZFtiuwxGjuJmAlqqCA = zYhenSUWVOkdKtNRcxYDfOMIGBfrWMaUXdNhTmmudXTUlCaRWSOlwYoHUlgWWgMCFOeAXuSsinUXFsqYcQHMLTaykWDRqZKopyMgviEcXWJmbIKixsvOonfWjjkTNSfH
+  kflgnqkeMYlCzZlmgjMjnrDSbFGdiEfTgsxGQVDjCCQpjbucezlrPSOSlpcmQnLEqXPpcsnMYjGWvqGdzWsJSHHLmMBADeBzEQCnqdaQcrlBiJnlLHJNslAdhQQHRyus _ = 1
+
+%gzXafJpWZdhELMpFVYuTsDnLlbUSObYWHwiJmMMmbStfxZdqFrPRWEkxbcMCwQUENzXJnaFQHvffuwGyKyenyoOtQdTQtLHReWRZaNsasmCyxkSNgGbDkXCtDMFOUBoG hUbmtNkzJCDiBOSAMOitzMIpEUCNbyWUBVevzujySQCLOtDtbpmhQCNlgBDpjWwLNVpsKnfAUSIHaEpDsxMyoFvfqqrFGPxAxZzEgiPmRRgwtxVVDoMuEjLDOXZHDmEM @{MainCoreDerivator @{LeastEffort}} $ Fuel -> Gen MaybeEmpty ListNat

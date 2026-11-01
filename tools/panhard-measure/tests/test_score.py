@@ -26,6 +26,26 @@ def test_score_parses_script_stdout_and_passes_sorted_files(tmp_path: Path) -> N
     ]
 
 
+def test_score_resolves_symlinks_before_calling_script(tmp_path: Path) -> None:
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    real = real_dir / "a.txt"
+    real.write_text("a")
+    staged = tmp_path / "staged"
+    staged.mkdir()
+    (staged / "a.txt").symlink_to(real)
+    args_log = tmp_path / "args.txt"
+    script = tmp_path / "fake-panhard"
+    script.write_text(
+        "#!/bin/bash\n"
+        f"printf '%s\\n' \"$@\" > '{args_log}'\n"
+        "echo '0.250000'\n"
+    )
+    script.chmod(0o755)
+    assert score(staged, script=script) == 0.25
+    assert args_log.read_text().splitlines() == [str(real.resolve())]
+
+
 def test_score_rejects_empty_directory(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="no regular files"):
         score(tmp_path)

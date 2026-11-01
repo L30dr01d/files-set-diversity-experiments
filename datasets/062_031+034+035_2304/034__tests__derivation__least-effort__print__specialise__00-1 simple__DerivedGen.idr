@@ -1,0 +1,11 @@
+module DerivedGen
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%faqRRDHuGTRfSVgcCvXwzhQlxCOVbCLOqBZppafXKghiYCUcPNvFTzcqVeNsrgzwtVbPptGkolhFiFINMmBVqHpmWMpeICKWRNELIQjyHscfknjDRFPNkeeulgEuXyQX ElabReflection
+
+data X = MkX (List Nat)
+
+%jbGeMBTxTeNcftXKYCdrVBILLNDdMcbWspfRcmwYSVmQVjyCzaUsBFIafGcuzfQtRQFgBxhXyVsxPdjUcKFZtbhUitqlkVRgbczwJrOrayyiseSkefTlwaIIRdMhojcP zlSFteqxZIrvkMEGeClmXUKiKWkbSFuSAUysasTgfPdzgmLeQVPdMTRKhSCJOugrTGWWBCqggrIviKOguwskgFTXfxnPKJWgPnwOdKOVaNepriWvZLJJFmivIHYyzQNZ @{MainCoreDerivator @{LeastEffort}} $ Fuel -> Gen MaybeEmpty X

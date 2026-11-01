@@ -112,7 +112,6 @@
         "019_otk_1000"
       ],
       "tools": [
-        "panhard-measure",
         "levassor-measure"
       ]
     },
@@ -170,11 +169,11 @@
       "title": "One file copied X times",
       "datasets": [
         "012_one_sv_file_1",
-        "048_one_sv_file_2",
-        "049_one_sv_file_3",
-        "050_one_sv_file_5",
-        "051_one_sv_file_7",
-        "052_one_sv_file_10",
+        "038_one_sv_file_2",
+        "039_one_sv_file_3",
+        "040_one_sv_file_5",
+        "041_one_sv_file_7",
+        "042_one_sv_file_10",
         "027_one_sv_file_25",
         "028_one_sv_file_50",
         "029_one_sv_file_75",
@@ -245,20 +244,15 @@
       ]
     },
     {
-      "id": "16_deptycheck",
+      "id": "16_deptycheck_1",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
         "031_deptycheck_original_768",
         "032_deptycheck_renamed_same_length_768",
-        "033_deptycheck_renamed128_768",
-        "034_deptycheck_renamed128_2_768",
-        "035_031+032_1536",
-        "036_031+033_1536",
-        "037_031+034_1536",
-        "038_032+033_1536",
-        "039_032+034_1536",
-        "040_033+034_1536"
+        "033_deptycheck_renamed_same_length_2_768",
+        "034_deptycheck_renamed128_768",
+        "035_deptycheck_renamed128_2_768"
       ],
       "tools": [
         "panhard-measure",
@@ -270,10 +264,16 @@
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "041_031+032+033_2304",
-        "042_031+032+034_2304",
-        "043_031+033+034_2304",
-        "044_032+033+034_2304"
+        "047_031+032_1536",
+        "048_031+033_1536",
+        "049_031+034_1536",
+        "050_031+035_1536",
+        "051_032+033_1536",
+        "052_032+034_1536",
+        "053_032+035_1536",
+        "054_033+034_1536",
+        "055_033+035_1536",
+        "056_034+035_1536"
       ],
       "tools": [
         "panhard-measure",
@@ -285,13 +285,82 @@
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "045_031+032+033+034_3072"
+        "057_031+032+033_2304",
+        "058_031+032+034_2304",
+        "059_031+032+035_2304",
+        "060_031+033+034_2304",
+        "061_031+033+035_2304",
+        "062_031+034+035_2304",
+        "063_032+033+034_2304",
+        "064_032+033+035_2304",
+        "065_032+034+035_2304",
+        "066_033+034+035_2304"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },
+    {
+      "id": "16_deptycheck_4_1",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "067_031+032+033+034_3072"
       ],
       "tools": [
         "panhard-measure",
         "levassor-measure"
       ]
     },    
+    {
+      "id": "16_deptycheck_4_2",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "068_031+032+033+035_3072"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },
+    {
+      "id": "16_deptycheck_4_3",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "069_031+032+034+035_3072"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },  
+    {
+      "id": "16_deptycheck_4_4",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "070_031+033+034+035_3072"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },  
+    {
+      "id": "16_deptycheck_4_5",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "071_032+033+034+035_3072"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },  
     {
       "id": "17_similar_random_different_vs_duplicates",
       "type": "score_per_measure",
@@ -300,9 +369,26 @@
         "004_similar_sv_subjective_50",
         "005_random_sv_50",
         "003_different_sv_subjective_50",
-        "046_duplicates_004_sv_100",
+        "036_duplicates_004_sv_100",
         "018_duplicates_001_sv_100",
-        "047_duplicates_003_sv_100"
+        "037_duplicates_003_sv_100"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
+      ]
+    },
+    {
+      "id": "18_langs_and_solutions",
+      "type": "score_per_measure",
+      "title": "Langs and soultions",
+      "datasets": [
+        "043_1_lang_10_solutions_10",
+        "044_1_lang_15_solutions_15",
+        "045_10_langs_1_solution_10",
+        "046_15_langs_1_solution_15"
       ],
       "tools": [
         "panhard-measure",
