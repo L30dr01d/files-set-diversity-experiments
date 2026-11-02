@@ -1,0 +1,11 @@
+module DerivedGen
+
+import AlternativeCore
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%kqzYIpSMycqvhcuuqdPtiAcLVcVKLBcjqjEcjEqcYqJzWzylHxoijwUieDsecSouBxcGOkjViXDaQXmdDihgCiuadBYwkpJkwjqEkuKuHAJdfavzXrPKKaGQiLecMIVU ElabReflection
+
+%rDztgYxTyxOAPrUlSYFILvXSPODLLyduJvGgusMnvpvCtkriBXLoJPaUorsVTjBgoRkgRgrQZFZqTjwOJOPkpIAHPksqmhShsXdYFWsIzeWlIwuJinEzVyRYewmJoHIV hPTboySGJJgKdObNVbOWhxOKEbiYkkBRHoUzYIPHFsEeccjqfMXmGBlANylTCUWPPAUHubwKsNIsxSHZvaNcfQuCGGkXGMxKvNdKQULdyyQxzFjSzPlRgjDZjuVPuAjU @{CallSelf} $ Fuel -> Gen MaybeEmpty Unit

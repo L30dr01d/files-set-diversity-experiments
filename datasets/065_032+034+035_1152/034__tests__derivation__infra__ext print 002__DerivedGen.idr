@@ -1,0 +1,11 @@
+module DerivedGen
+
+import AlternativeCore
+
+import Deriving.DepTyCheck.Gen
+
+%default total
+
+%jwvHXDGxpmsfCwlSMGMNXhyzobuKVTvPaLybwEevFHMjaIbBftqFpwqiVXVkuHhlWAkgrmZjpjvgZwBXvuRHBOoQDXCSJIUDSfqvoFGyIrlTQHbtpHacdBjUlSiRRWHl ElabReflection
+
+%kOsiTtoGzLKHEaqOEWarevbHoaYntgewISfkdPnTtOzMOHfDsbLPlhHGETyBjHJsdHrezpBjCMdyzrWPWXQzYTnkQbunqmsazvFNDlcCzjyvMKxhSyFmHpHQDacDxmuF rbHwmNQjpTGqJHIZQAsJSRwGmSqiJeDkLbHNKLnXMtQJIOiJDqQurMUIcTpRbNfJymttRnBXZmVHYzkuqDOklAnWnktKLXkvwrTbJrtIWbzVacSpoxfilsujxcoSwdTY @{Ext_XSS} $ Fuel -> (Fuel -> Gen MaybeEmpty String) => Gen MaybeEmpty XSS

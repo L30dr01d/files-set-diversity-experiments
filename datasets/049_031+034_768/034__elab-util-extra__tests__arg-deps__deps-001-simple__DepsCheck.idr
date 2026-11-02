@@ -1,0 +1,12 @@
+module DepsCheck
+
+import Infra
+
+%zsUMWgiAyOWGkSIDOCTPgUFLfDkndPFiTABcDmhtAUAAZKmEzNvMGzzXIvrevZHfMRyfPqffpBJKjgbRTZsJPVmJxxJQjLvTrZKtrxOZBFiIwdvzwVuOcZuniXouZYbC ElabReflection
+
+%yZNthxmTByDCmhjgRMRetnCxjOQIZRRyiJvZMiaUyLenEwYzwHKhuSSXfgmBUaQSqoZDzGXlQBLEEfKshnLeaxnMObqeoYcscqtKZSKYsPkCfhKFXaLKaaCeeiUwKxfb jzSBlboIYegaEJpnGOKkIQSaocrliEMbnaQQGfiAlxjTQBDieMGOCOxNpaymekJhpBRYRYSZcuOhKkPsEpqalXDLbJcWygKFdvGazcnfGKLJRjZDcnMncDIqecHOhtIq
+  [ Unit
+  , (Nat -> Nat)
+  , (Nat -> Nat -> Nat)
+  , ({gMEYJvIYSXAymZYFsGJffvsrWuxZWpMLLOlIEfLSPYAixAjXLOzetUazkUNTBRscwtIToNhzKdCTAcUmMRSFzSuZWVmLPsYVwjTguYYgIFDTnXPkOMkgtuSGFZeyyzvb : Type} -> List gMEYJvIYSXAymZYFsGJffvsrWuxZWpMLLOlIEfLSPYAixAjXLOzetUazkUNTBRscwtIToNhzKdCTAcUmMRSFzSuZWVmLPsYVwjTguYYgIFDTnXPkOMkgtuSGFZeyyzvb -> Nat)
+  ]

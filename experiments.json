@@ -248,11 +248,11 @@
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "031_deptycheck_original_768",
-        "032_deptycheck_renamed_same_length_768",
-        "033_deptycheck_renamed_same_length_2_768",
-        "034_deptycheck_renamed128_768",
-        "035_deptycheck_renamed128_2_768"
+        "031_deptycheck_original_384",
+        "032_deptycheck_renamed_same_length_384",
+        "033_deptycheck_renamed_same_length_2_384",
+        "034_deptycheck_renamed128_384",
+        "035_deptycheck_renamed128_2_384"
       ],
       "tools": [
         "panhard-measure",
@@ -264,16 +264,16 @@
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "047_031+032_1536",
-        "048_031+033_1536",
-        "049_031+034_1536",
-        "050_031+035_1536",
-        "051_032+033_1536",
-        "052_032+034_1536",
-        "053_032+035_1536",
-        "054_033+034_1536",
-        "055_033+035_1536",
-        "056_034+035_1536"
+        "047_031+032_768",
+        "048_031+033_768",
+        "049_031+034_768",
+        "050_031+035_768",
+        "051_032+033_768",
+        "052_032+034_768",
+        "053_032+035_768",
+        "054_033+034_768",
+        "055_033+035_768",
+        "056_034+035_768"
       ],
       "tools": [
         "panhard-measure",
@@ -281,20 +281,42 @@
       ]
     },
     {
-      "id": "16_deptycheck_3",
+      "id": "16_deptycheck_3_1",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "057_031+032+033_2304",
-        "058_031+032+034_2304",
-        "059_031+032+035_2304",
-        "060_031+033+034_2304",
-        "061_031+033+035_2304",
-        "062_031+034+035_2304",
-        "063_032+033+034_2304",
-        "064_032+033+035_2304",
-        "065_032+034+035_2304",
-        "066_033+034+035_2304"
+        "057_031+032+033_1152",
+        "058_031+032+034_1152",
+        "059_031+032+035_1152",
+        "060_031+033+034_1152"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },
+    {
+      "id": "16_deptycheck_3_2",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "061_031+033+035_1152",
+        "062_031+034+035_1152",
+        "063_032+033+034_1152",
+        "064_032+033+035_1152"
+      ],
+      "tools": [
+        "panhard-measure",
+        "levassor-measure"
+      ]
+    },
+    {
+      "id": "16_deptycheck_3_3",
+      "type": "score_per_measure",
+      "title": "DepTyCheck modifications",
+      "datasets": [
+        "065_032+034+035_1152",
+        "066_033+034+035_1152"
       ],
       "tools": [
         "panhard-measure",
@@ -306,19 +328,10 @@
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "067_031+032+033+034_3072"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
-    },    
-    {
-      "id": "16_deptycheck_4_2",
-      "type": "score_per_measure",
-      "title": "DepTyCheck modifications",
-      "datasets": [
-        "068_031+032+033+035_3072"
+        "067_031+032+033+034_1536",
+        "068_031+032+033+035_1536",
+        "069_031+032+034+035_1536",
+        "070_031+033+034+035_1536"
       ],
       "tools": [
         "panhard-measure",
@@ -326,41 +339,17 @@
       ]
     },
     {
-      "id": "16_deptycheck_4_3",
-      "type": "score_per_measure",
-      "title": "DepTyCheck modifications",
-      "datasets": [
-        "069_031+032+034+035_3072"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
-    },  
-    {
-      "id": "16_deptycheck_4_4",
-      "type": "score_per_measure",
-      "title": "DepTyCheck modifications",
-      "datasets": [
-        "070_031+033+034+035_3072"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
-    },  
-    {
       "id": "16_deptycheck_4_5",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
       "datasets": [
-        "071_032+033+034+035_3072"
+        "071_032+033+034+035_1536"
       ],
       "tools": [
         "panhard-measure",
         "levassor-measure"
       ]
-    },  
+    },
     {
       "id": "17_similar_random_different_vs_duplicates",
       "type": "score_per_measure",
