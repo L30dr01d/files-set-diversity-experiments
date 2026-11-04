@@ -3,11 +3,11 @@ Combine dataset directories into every pair, then every triple, …, then all N.
 
 CLI usage:
     python tools/combine_datasets.py \\
-      datasets/031_deptycheck_original_768 \\
-      datasets/032_deptycheck_renamed_same_length_768 \\
-      datasets/033_deptycheck_renamed_same_length_2_768 \\
-      datasets/034_deptycheck_renamed128_768 \\
-      datasets/035_deptycheck_renamed128_2_768 \\
+      datasets/031_deptycheck_original_384 \\
+      datasets/032_deptycheck_renamed_same_length_384 \\
+      datasets/033_deptycheck_renamed_same_length_2_384 \\
+      datasets/034_deptycheck_renamed128_384 \\
+      datasets/035_deptycheck_renamed128_2_384 \\
       --start 47 --max-level 4
 """
 

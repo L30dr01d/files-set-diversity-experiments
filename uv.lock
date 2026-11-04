@@ -13,6 +13,7 @@ members = [
     "fast-filter",
     "levassor-measure",
     "ncd1-measure",
+    "panhard-filter",
     "panhard-measure",
     "poisson-measure",
     "random-filter",
@@ -27,6 +28,7 @@ dependencies = [
     { name = "levassor-measure" },
     { name = "matplotlib" },
     { name = "ncd1-measure" },
+    { name = "panhard-filter" },
     { name = "panhard-measure" },
     { name = "poisson-measure" },
     { name = "psutil" },
@@ -46,6 +48,7 @@ requires-dist = [
     { name = "levassor-measure", editable = "tools/levassor-measure" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "ncd1-measure", editable = "tools/ncd1-measure" },
+    { name = "panhard-filter", editable = "tools/panhard-filter" },
     { name = "panhard-measure", editable = "tools/panhard-measure" },
     { name = "poisson-measure", editable = "tools/poisson-measure" },
     { name = "psutil", specifier = ">=5.9.5" },
@@ -784,6 +787,20 @@ sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce89
 wheels = [
     { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
 ]
+
+[[package]]
+name = "panhard-filter"
+version = "0.1.0"
+source = { editable = "tools/panhard-filter" }
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pytest", marker = "extra == 'dev'", specifier = ">=8" }]
+provides-extras = ["dev"]
 
 [[package]]
 name = "panhard-measure"

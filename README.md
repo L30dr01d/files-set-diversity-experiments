@@ -6,7 +6,7 @@ Config-driven diversity experiments. Edit `experiments.json`, push, and browse t
 uv sync --python 3.14 --extra fastr
 uv run pytest
 uv run python -m experiment_runner matrix
-uv run python -m experiment_runner run 05_super_random_3
+uv run python -m experiment_runner run 18_langs_and_solutions
 ```
 
 Run these commands from the repository root. Python 3.14 and the `fastr` extra
@@ -48,16 +48,20 @@ SITE_URL=https://example.github.io BASE_PATH=/ci-experiments/ npm --prefix site 
 ```bash
 python tools/copy_file.py --input /path/to/file --output-dir datasets/027_one_sv_file_25 --count 25
 python tools/copy_idr_flat.py --input ../deptycheck --output datasets/031_deptycheck_original
-python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_768 --output-dir datasets/032_deptycheck_renamed_768 --mode same-length
-python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_768 --output-dir datasets/033_deptycheck_renamed128_768 --mode 128
+python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_384 --output-dir datasets/032_deptycheck_renamed_same_length_384 --mode same-length
+python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_384 --output-dir datasets/033_deptycheck_renamed_same_length_2_384 --mode same-length --seed 1
+python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_384 --output-dir datasets/034_deptycheck_renamed128_384 --mode 128
+python tools/rename_lowercase_idents.py --input-dir datasets/031_deptycheck_original_384 --output-dir datasets/035_deptycheck_renamed128_2_384 --mode 128 --seed 1
 python tools/combine_datasets.py \
-  datasets/031_deptycheck_original_768 \
-  datasets/032_deptycheck_renamed_same_length_768 \
-  datasets/033_deptycheck_renamed128_768 \
-  datasets/034_deptycheck_renamed128_2_768
+  datasets/031_deptycheck_original_384 \
+  datasets/032_deptycheck_renamed_same_length_384 \
+  datasets/033_deptycheck_renamed_same_length_2_384 \
+  datasets/034_deptycheck_renamed128_384 \
+  datasets/035_deptycheck_renamed128_2_384 \
+  --start 47 --max-level 4
 ```
 
-`copy_idr_flat` writes to `{output}_{count}` (file count appended). `rename_lowercase_idents` keeps keywords and Capitalized words, renames lowercase-starting tokens; `--mode same-length` or `128`; optional `--seed` (default 0). `combine_datasets` writes every pair, then every triple, then all four; copied files are prefixed with the source id.
+`copy_idr_flat` writes to `{output}_{count}` (file count appended). `rename_lowercase_idents` keeps keywords and Capitalized words, renames lowercase-starting tokens; `--mode same-length` or `128`; optional `--seed` (default 0). `combine_datasets` writes every pair, then every triple, up to `--max-level` (default: all N inputs); copied files are prefixed with the source id.
 
 Set an experiment's optional `disable_reason` to a nonempty string to exclude it from CI and display the reason in the gallery. Manual runs remain available.
 

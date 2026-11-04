@@ -1,9 +1,0 @@
-module DerivedGen
-
-import Deriving.DepTyCheck.Gen
-
-%default total
-
-%nbngGNcIvOrgqeiAfNCjmnHDJkReeKwMwFsbigWmbybEuwRZXiNWrOTsLhiVrVTBHmHMGymwrPwiYVtpnAmytOLdWYePazRUeAzgfkOmPqQUNEMIRUEuHaDcFSuESQro ElabReflection
-
-%mBBooqYFhWqAZaKvuRVKueVUlJtXiiNJRrKolRDLpQwfGNuVqDycpuOpFZNwBSIncHjDWqzdqjTvVfGjJmEDLKFzWmYVxvsXRfNCPTEXsxVpxJrotkUcrJONWqiWMfQy moZRcOKtoVMBBBkUAgpikwCmeNhfVybGNiWqXdKjNiRWJcKJgQAukpwBkUxJZmPFlJLSkRDUpmZwpQlcvzWLniXwCtTrZehDKqsgSounyOUrXrgxLWJLxHplEAXAaYHX @{MainCoreDerivator @{LeastEffort}} $ Fuel -> Gen MaybeEmpty Nat

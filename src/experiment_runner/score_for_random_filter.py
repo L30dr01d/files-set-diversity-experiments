@@ -290,6 +290,8 @@ def plot_steps_grid(results: dict, experiment: Experiment):
                 for count in counts
             ]
         )
+        for edge in range(len(counts) + 1):
+            ax.axvline(edge - 0.5, linestyle=":", color="0.4", linewidth=0.8)
         if drew:
             ax.legend(
                 handles=[

@@ -428,6 +428,52 @@ def test_plot_steps_grid_titles_ylim_labels_and_nan() -> None:
         plt.close(fig)
 
 
+def test_plot_draws_dotted_vertical_column_borders() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from experiment_runner.score_for_random_filter import plot_steps_grid
+
+    experiment = _experiment("ds_one", tools=("fake-measure",))
+
+    def _step(index: int, remaining_count: int, remaining_pct: float, value: float):
+        return {
+            "index": index,
+            "remaining_count": remaining_count,
+            "remaining_pct": remaining_pct,
+            "measures": {"fake-measure": {"value": value, "seconds": None}},
+        }
+
+    results = {
+        "ds_one": {
+            "runs": [
+                {
+                    "seed": 0,
+                    "filter_seconds": 1.0,
+                    "steps": [
+                        _step(0, 8, 100.0, 0.20),
+                        _step(1, 4, 50.0, 0.30),
+                    ],
+                }
+            ],
+        },
+    }
+    fig = plot_steps_grid(results, experiment)
+    try:
+        dotted = [
+            line
+            for line in fig.axes[0].get_lines()
+            if line.get_linestyle() == ":"
+        ]
+        xs = sorted({float(line.get_xdata()[0]) for line in dotted})
+        assert xs == [-0.5, 0.5, 1.5]
+        assert all(list(line.get_xdata())[0] == list(line.get_xdata())[1] for line in dotted)
+    finally:
+        plt.close(fig)
+
+
 def test_plot_steps_grid_uses_pinned_measure_colors() -> None:
     import matplotlib
 

@@ -17,8 +17,8 @@ def _load():
 
 def test_source_id_reads_leading_digits():
     mod = _load()
-    assert mod.source_id(Path("datasets/031_deptycheck_original_768")) == "031"
-    assert mod.source_id(Path("035_031+032_1536")) == "035"
+    assert mod.source_id(Path("datasets/031_deptycheck_original_384")) == "031"
+    assert mod.source_id(Path("035_031+032_768")) == "035"
 
 
 def test_source_id_rejects_name_without_digits_underscore_rest():
@@ -54,6 +54,47 @@ def test_combinations_in_order_pairs_then_triples_then_all():
         ("032", "033", "034"),
         ("031", "032", "033", "034"),
     ]
+
+
+def test_combinations_in_order_stops_at_max_level():
+    mod = _load()
+    paths = [
+        Path("031_a"),
+        Path("032_b"),
+        Path("033_c"),
+        Path("034_d"),
+        Path("035_e"),
+    ]
+    combos = mod.combinations_in_order(paths, max_level=4)
+    ids = [tuple(mod.source_id(p) for p in combo) for combo in combos]
+    assert ids == [
+        ("031", "032"),
+        ("031", "033"),
+        ("031", "034"),
+        ("031", "035"),
+        ("032", "033"),
+        ("032", "034"),
+        ("032", "035"),
+        ("033", "034"),
+        ("033", "035"),
+        ("034", "035"),
+        ("031", "032", "033"),
+        ("031", "032", "034"),
+        ("031", "032", "035"),
+        ("031", "033", "034"),
+        ("031", "033", "035"),
+        ("031", "034", "035"),
+        ("032", "033", "034"),
+        ("032", "033", "035"),
+        ("032", "034", "035"),
+        ("033", "034", "035"),
+        ("031", "032", "033", "034"),
+        ("031", "032", "033", "035"),
+        ("031", "032", "034", "035"),
+        ("031", "033", "034", "035"),
+        ("032", "033", "034", "035"),
+    ]
+    assert all(len(combo) <= 4 for combo in combos)
 
 
 def _write_dataset(parent: Path, name: str, files: dict[str, bytes]) -> Path:
@@ -100,6 +141,22 @@ def test_combine_three_datasets_writes_pairs_then_triple(tmp_path: Path):
         "033__a.idr",
         "033__b.idr",
     ]
+
+
+def test_combine_five_inputs_stops_at_max_level_4(tmp_path: Path):
+    sources = [
+        _write_dataset(tmp_path, f"03{i}_src", {"a.idr": bytes([i])})
+        for i in range(1, 6)
+    ]
+
+    dests = _load().combine(sources, tmp_path, start=47, max_level=4)
+
+    names = [p.name for p in dests]
+    assert names[0] == "047_031+032_2"
+    assert names[-1] == "071_032+033+034+035_4"
+    assert len(names) == 25
+    assert not any(name.count("+") == 4 for name in names)
+    assert not (tmp_path / "072_031+032+033+034+035_5").exists()
 
 
 def test_combine_two_inputs_writes_one_pair_and_no_triple(tmp_path: Path):
@@ -215,6 +272,31 @@ def test_main_honors_output_parent_and_start(
     _load().main()
     dest = out / "040_031+032_4"
     assert dest.is_dir()
+
+
+def test_main_honors_max_level(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    sources = [
+        _write_dataset(tmp_path, f"03{i}_src", {"a.idr": bytes([i])})
+        for i in range(1, 6)
+    ]
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "combine_datasets.py",
+            *[str(path) for path in sources],
+            "--start",
+            "47",
+            "--max-level",
+            "4",
+        ],
+    )
+    _load().main()
+    assert (tmp_path / "047_031+032_2").is_dir()
+    assert (tmp_path / "071_032+033+034+035_4").is_dir()
+    assert not (tmp_path / "072_031+032+033+034+035_5").exists()
 
 
 def test_main_errors_on_one_input(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

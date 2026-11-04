@@ -16,6 +16,7 @@ dependencies = [
     "fast-filter",
     "random-filter",
     "panhard-measure",
+    "panhard-filter",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +36,7 @@ levassor-measure = { workspace = true }
 fast-filter = { workspace = true }
 random-filter = { workspace = true }
 panhard-measure = { workspace = true }
+panhard-filter = { workspace = true }
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
