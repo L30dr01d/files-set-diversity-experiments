@@ -11,6 +11,7 @@ KNOWN_TYPES = frozenset(
         "measure_per_set",
         "score_for_fastr",
         "score_for_random_filter",
+        "score_for_panhard",
     }
 )
 

@@ -1,17 +1,10 @@
 # panhard-filter
 
-Directory filter driven by the copied `panhard-xz` script. Drops the least important file until the next drop would make the diversity score strictly lower. An equal score continues. Needs `xz` and `bc` on PATH for a real run.
+Ranks a folder with the vendored `panhard-xz --verbose` and drops the least important file (smallest normalised contribution; path string breaks ties). Scoring and ranking are one script run. Source files are not modified.
 
 ```bash
-uv run python -m panhard_filter path/to/dataset
-# or, after install:
-panhard-filter path/to/dataset
+panhard-filter path/to/folder
+panhard-filter --dont-stop path/to/folder
 ```
 
-Prints kept basenames to stdout, one per line. Source files are not modified.
-
-```python
-from pathlib import Path
-from panhard_filter import filter
-filter(Path("tests/"))
-```
+Without `--dont-stop`, removal stops when the new set's diversity is strictly lower than the previous set. That smaller set is kept. `--dont-stop` continues until 2 files remain. If diversity never falls, both modes stop at 2 files. Kept paths are printed one per line.

@@ -385,6 +385,56 @@
         "poisson-measure",
         "ncd1-measure"
       ]
+    },
+    {
+      "id": "19_150_sv_panhard_filter",
+      "type": "score_for_panhard",
+      "title": "150 sv files filtered by panhard filter",
+      "datasets": [
+        "009_random_sv_150",
+        "011_duplicates_sv_75x2_150"
+      ],
+      "tools": [
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
+      ]
+    },
+    {
+      "id": "20_algo_panhard_filter",
+      "type": "score_for_panhard",
+      "title": "Algorithms filtered by panhard filter",
+      "datasets": [
+        "016_algos_java_1_task_10_variants_10",
+        "022_algos_5_tasks_3_variants_15",
+        "023_algos_10_tasks_3_variants_30",
+        "015_algos_java_10_tasks_1_variant_10",
+        "024_algos_15_tasks_1_variants_15"
+      ],
+      "tools": [
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
+      ]
+    },
+    {
+      "id": "21_samle_sv_panhard_filter",
+      "type": "score_for_panhard",
+      "title": "Different sets filtered by panhard filter",
+      "datasets": [
+        "001_random_sv_50",
+        "018_duplicates_001_sv_100",
+        "003_different_sv_subjective_50",
+        "017_different_sv_cut_from_003_10",
+        "004_similar_sv_subjective_50",
+        "020_similar_sv_cut_from_004_10",
+        "021_duplicates_sv_5x2_cut_from_004_10"
+      ],
+      "tools": [
+        "levassor-measure",
+        "poisson-measure",
+        "ncd1-measure"
+      ]
     }
   ]
 }

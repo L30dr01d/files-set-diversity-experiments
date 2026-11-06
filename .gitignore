@@ -9,3 +9,7 @@ site/.astro/
 site/dist/
 site/public/plots/
 docs/superpowers
+.superpowers
+.tewyn
+.pi
+.cursor

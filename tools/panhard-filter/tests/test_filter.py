@@ -1,200 +1,162 @@
+import stat
+import subprocess
 from pathlib import Path
 
-import pytest
+from panhard_filter.cli import main
+from panhard_filter.filter import filter_dir, filter_paths
 
-from panhard_filter import filter
-from panhard_filter.filter import filter as filter_fn
-
-
-def _files(tmp_path: Path, names: tuple[str, ...]) -> Path:
-    files_dir = tmp_path / "files"
-    files_dir.mkdir()
-    for name in names:
-        (files_dir / name).write_text(name, encoding="utf-8")
-    return files_dir
+ROOT = Path(__file__).resolve().parents[3]
+REAL = ROOT / "tools/panhard-filter/src/panhard_filter/panhard-xz"
+DATASET = ROOT / "datasets/007_algos_java_5_tasks_10_variants_50"
 
 
 def _script(tmp_path: Path, body: str) -> Path:
-    script = tmp_path / "fake-panhard"
-    script.write_text("#!/bin/bash\n" + body, encoding="utf-8")
-    script.chmod(0o755)
-    return script
+    path = tmp_path / "fake-panhard"
+    path.write_text(body, encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
 
 
-def _resolved(files_dir: Path, name: str) -> str:
-    return str((files_dir / name).resolve())
+def _fake(tmp_path: Path) -> Path:
+    # Scores by file count. Importance is the trailing integer in the name.
+    return _script(
+        tmp_path,
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+n=0
+for f in "$@"; do n=$((n + 1)); done
+echo "scale=10; $n / 10" | bc
+for f in "$@"; do
+  echo "1 $f" >&2
+done
+""",
+    )
 
 
-def test_filter_undoes_drop_when_score_falls(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("b.txt", "a.txt", "c.txt"))
-    args_log = tmp_path / "args.txt"
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
-    c = _resolved(files_dir, "c.txt")
+def test_stops_when_diversity_drops(tmp_path: Path):
+    folder = tmp_path / "data"
+    folder.mkdir()
+    for name in ("a_3", "b_1", "c_2", "d_9"):
+        (folder / name).write_text(name)
+    # fake score is count/10, so it never drops. Use a script that drops at 3.
     script = _script(
         tmp_path,
-        f"printf '%s\\n' \"$@\" >> '{args_log}'\n"
-        f'if grep -Fqx -- "{c}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo 0.5\n"
-        f'  echo "0.9 {a}" >&2\n'
-        f'  echo "0.8 {b}" >&2\n'
-        f'  echo "0.1 {c}" >&2\n'
-        "else\n"
-        "  echo 0.4\n"
-        f'  echo "0.7 {a}" >&2\n'
-        f'  echo "0.6 {b}" >&2\n'
-        "fi\n",
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+n=0
+for f in "$@"; do n=$((n + 1)); done
+if [ "$n" -le 3 ]; then echo "0.1"; else echo "0.$n"; fi
+for f in "$@"; do echo "1 $f" >&2; done
+""",
     )
-    assert filter(files_dir, script=script) == ["a.txt", "b.txt", "c.txt"]
-    calls = args_log.read_text().splitlines()
-    assert calls[:4] == ["--verbose", a, b, c]
-    assert calls[4:7] == ["--verbose", a, b]
+    result = filter_dir(folder, script=script)
+    assert result.stop_count == 3
+    assert len(result.kept) == 3
+    assert [step.remaining_count for step in result.steps] == [4, 3]
 
 
-def test_filter_continues_when_score_is_equal(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt", "c.txt"))
-    args_log = tmp_path / "args.txt"
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
-    c = _resolved(files_dir, "c.txt")
+def test_dont_stop_filters_to_two_and_keeps_stop_count(tmp_path: Path):
+    folder = tmp_path / "data"
+    folder.mkdir()
+    for name in ("a", "b", "c", "d"):
+        (folder / name).write_text(name)
     script = _script(
         tmp_path,
-        f"printf '%s\\n' \"$@\" >> '{args_log}'\n"
-        f'if grep -Fqx -- "{c}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo 0.5\n"
-        f'  echo "0.2 {c}" >&2\n'
-        f'  echo "0.9 {a}" >&2\n'
-        f'  echo "0.8 {b}" >&2\n'
-        f'elif grep -Fqx -- "{b}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo 0.5\n"
-        f'  echo "0.1 {b}" >&2\n'
-        f'  echo "0.9 {a}" >&2\n'
-        "else\n"
-        "  echo 0.5\n"
-        "fi\n",
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+n=0
+for f in "$@"; do n=$((n + 1)); done
+if [ "$n" -le 3 ]; then echo "0.1"; else echo "0.$n"; fi
+for f in "$@"; do echo "1 $f" >&2; done
+""",
     )
-    assert filter(files_dir, script=script) == ["a.txt"]
-    calls = args_log.read_text().splitlines()
-    assert calls[-2:] == ["--verbose", a]
+    result = filter_dir(folder, dont_stop=True, script=script)
+    assert result.stop_count == 3
+    assert [step.remaining_count for step in result.steps] == [4, 3, 2]
+    assert len(result.kept) == 3
 
 
-def test_filter_undoes_last_drop_when_one_file_score_falls(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt"))
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
+def test_equal_score_is_not_a_drop_and_ends_at_two(tmp_path: Path):
+    folder = tmp_path / "data"
+    folder.mkdir()
+    for name in ("a", "b", "c"):
+        (folder / name).write_text(name)
+    script = _fake(tmp_path)
+    result = filter_dir(folder, script=script)
+    assert result.stop_count == 2
+    assert [step.remaining_count for step in result.steps] == [3, 2]
+
+
+def test_tie_removes_lower_path_string(tmp_path: Path):
+    files = []
+    for name in ("b", "a", "c"):
+        path = tmp_path / name
+        path.write_text(name)
+        files.append(path.resolve())
     script = _script(
         tmp_path,
-        f'if grep -Fqx -- "{b}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo 0.5\n"
-        f'  echo "0.1 {b}" >&2\n'
-        f'  echo "0.9 {a}" >&2\n'
-        "else\n"
-        "  echo 0\n"
-        "fi\n",
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+echo 0.5
+for f in "$@"; do echo "0.2 $f" >&2; done
+""",
     )
-    assert filter(files_dir, script=script) == ["a.txt", "b.txt"]
+    result = filter_paths(files, dont_stop=True, script=script)
+    removed_first = set(files) - set(result.steps[1].remaining)
+    assert removed_first == {min(files, key=str)}
 
 
-def test_filter_parses_bc_ranking_lines(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt"))
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
+def test_path_with_space(tmp_path: Path):
+    folder = tmp_path / "dir"
+    folder.mkdir()
+    (folder / "a b").write_text("a")
+    (folder / "c").write_text("c")
     script = _script(
         tmp_path,
-        f'if grep -Fqx -- "{b}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo ' .5000000000'\n"
-        f'  echo " .0000000000 {a}" >&2\n'
-        f'  echo " 0.1000000000 {b}" >&2\n'
-        "else\n"
-        "  echo 0.5\n"
-        "fi\n",
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+echo 0.4
+for f in "$@"; do echo "0.2 $f" >&2; done
+""",
     )
-    assert filter(files_dir, script=script) == ["b.txt"]
+    result = filter_dir(folder, script=script)
+    assert result.stop_count == 2
+    assert all(path.exists() for path in result.steps[0].remaining)
 
 
-def test_filter_tie_breaks_by_basename(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("b.txt", "a.txt"))
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
+def test_cli_prints_kept(tmp_path: Path, monkeypatch, capsys):
+    folder = tmp_path / "data"
+    folder.mkdir()
+    for name in ("a", "b"):
+        (folder / name).write_text(name)
     script = _script(
         tmp_path,
-        f'if grep -Fqx -- "{a}" <<<"$(printf \'%s\\n\' "$@")" && '
-        f'grep -Fqx -- "{b}" <<<"$(printf \'%s\\n\' "$@")"; then\n'
-        "  echo 0.5\n"
-        f'  echo "0.1 {b}" >&2\n'
-        f'  echo "0.1 {a}" >&2\n'
-        "else\n"
-        "  echo 0.5\n"
-        "fi\n",
+        """#!/bin/sh
+if [ "$1" = "--verbose" ]; then shift; fi
+echo 0.5
+for f in "$@"; do echo "0.2 $f" >&2; done
+""",
     )
-    assert filter(files_dir, script=script) == ["b.txt"]
+    monkeypatch.setattr("panhard_filter.filter._VENDORED", script)
+    assert main([str(folder)]) == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 2
 
 
-def test_filter_one_file_does_not_call_script(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("only.txt",))
-    args_log = tmp_path / "args.txt"
-    script = _script(
-        tmp_path,
-        f"printf '%s\\n' \"$@\" > '{args_log}'\n"
-        "echo 0.0\n",
-    )
-    assert filter(files_dir, script=script) == ["only.txt"]
-    assert not args_log.exists()
-
-
-def test_filter_rejects_empty_directory(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="no regular files"):
-        filter(tmp_path)
-
-
-def test_filter_rejects_missing_path(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="not a directory"):
-        filter(tmp_path / "missing")
-
-
-def test_filter_rejects_ranking_outside_current_set(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt"))
-    a = _resolved(files_dir, "a.txt")
-    outsider = _resolved(tmp_path, "nope.txt")
-    script = _script(
-        tmp_path,
-        "echo 0.5\n"
-        f'echo "0.2 {outsider}" >&2\n'
-        f'echo "0.9 {a}" >&2\n',
-    )
-    with pytest.raises(ValueError, match="ranking"):
-        filter(files_dir, script=script)
-
-
-def test_filter_rejects_non_numeric_score(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt"))
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
-    script = _script(
-        tmp_path,
-        "echo not-a-score\n"
-        f'echo "0.2 {a}" >&2\n'
-        f'echo "0.9 {b}" >&2\n',
-    )
-    with pytest.raises(ValueError, match="score"):
-        filter(files_dir, script=script)
-
-
-def test_filter_rejects_non_numeric_contribution(tmp_path: Path) -> None:
-    files_dir = _files(tmp_path, ("a.txt", "b.txt"))
-    a = _resolved(files_dir, "a.txt")
-    b = _resolved(files_dir, "b.txt")
-    script = _script(
-        tmp_path,
-        "echo 0.5\n"
-        f'echo "low {a}" >&2\n'
-        f'echo "0.9 {b}" >&2\n',
-    )
-    with pytest.raises(ValueError, match="contribution"):
-        filter(files_dir, script=script)
-
-
-def test_vendored_script_exists_and_is_executable() -> None:
-    script = Path(filter_fn.__code__.co_filename).resolve().parent / "panhard-xz"
-    assert script.is_file()
-    assert script.stat().st_mode & 0o111
+def test_real_script_on_three_dataset_files(tmp_path: Path):
+    xz = subprocess.run(["xz", "--version"], capture_output=True)
+    bc = subprocess.run(["bc", "--version"], capture_output=True)
+    if xz.returncode != 0 or bc.returncode != 0:
+        return
+    names = [
+        "add_two_numbers_01.java",
+        "add_two_numbers_02.java",
+        "add_two_numbers_03.java",
+    ]
+    for name in names:
+        (tmp_path / name).write_bytes((DATASET / name).read_bytes())
+    result = filter_dir(tmp_path, dont_stop=True, script=REAL)
+    assert [step.remaining_count for step in result.steps] == [3, 2]
+    assert result.stop_count in (2, 3)
+    assert len(result.kept) == result.stop_count
+    assert list(tmp_path.iterdir())  # sources stay

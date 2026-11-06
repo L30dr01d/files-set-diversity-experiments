@@ -4,28 +4,23 @@ import argparse
 import sys
 from pathlib import Path
 
-from panhard_filter.filter import filter
-
-
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="panhard-filter",
-        description="Drop the least important file until panhard-xz would score the set lower.",
-    )
-    p.add_argument("files", type=Path, help="Directory of files to filter")
-    return p
+from panhard_filter.filter import filter_dir
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    files_dir: Path = args.files
-    if not files_dir.is_dir():
-        print(f"error: not a directory: {files_dir}", file=sys.stderr)
-        return 2
+    parser = argparse.ArgumentParser(prog="panhard-filter")
+    parser.add_argument("--dont-stop", action="store_true")
+    parser.add_argument("folder", type=Path)
+    args = parser.parse_args(argv)
     try:
-        names = filter(files_dir)
-    except Exception as exc:  # noqa: BLE001
+        result = filter_dir(args.folder, dont_stop=args.dont_stop)
+    except (ValueError, RuntimeError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
-    sys.stdout.write("".join(f"{name}\n" for name in names))
+    for path in result.kept:
+        print(path)
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

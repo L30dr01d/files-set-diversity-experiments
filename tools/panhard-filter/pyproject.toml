@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "panhard-filter"
 version = "0.1.0"
-description = "Drop the least important file until panhard-xz would score the set lower."
+description = "Drop the least important file according to panhard-xz until diversity falls."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
