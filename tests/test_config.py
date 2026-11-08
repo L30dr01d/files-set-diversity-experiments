@@ -26,8 +26,19 @@ def test_known_types_include_four_experiment_types():
             "score_for_fastr",
             "score_for_random_filter",
             "score_for_panhard",
+            "coverage_with_filter",
         }
     )
+
+
+def test_coverage_with_filter_experiment_is_configured():
+    repo = Path(__file__).resolve().parents[1]
+    loaded = load_experiments(repo / "experiments.json")
+    matches = [exp for exp in loaded if exp.id == "22_coverage_wih_filter"]
+    assert len(matches) == 1
+    assert matches[0].type == "coverage_with_filter"
+    assert matches[0].datasets == ("001_random_sv_50", "018_duplicates_001_sv_100")
+    assert matches[0].tools == ("fast-filter",)
 
 
 def test_load_experiments_reads_fields(tmp_path: Path):

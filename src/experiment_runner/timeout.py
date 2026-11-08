@@ -25,6 +25,13 @@ def hang_reduce(_files_dir: Path, _algo: str, _pct: float) -> list[str]:
     return ["x"]
 
 
+def hang_with_grandchild():
+    import subprocess
+
+    subprocess.Popen(["bash", "-c", "exec -a covtimeoutsleep sleep 30"])
+    time.sleep(30)
+
+
 def hang_filter(paths, measure, *, relative_eps, max_tries, rng):
     time.sleep(10_000)
     return None
@@ -36,6 +43,10 @@ def raise_score(_files_dir: Path) -> float:
 
 def quick_score(_files_dir: Path) -> float:
     return 0.42
+
+
+def wide_ids(count: int) -> frozenset[str]:
+    return frozenset(f"ivl.cc:{index}" for index in range(count))
 
 
 def kill_self(*_args) -> float:
@@ -63,7 +74,26 @@ def _apply_memory_cap(max_bytes: int | None) -> None:
         return
 
 
+def _stop_process_group(proc) -> None:
+    import os
+    import signal
+
+    if not proc.pid:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        proc.kill()
+    proc.join()
+
+
 def _run_worker(fn: Callable, args: tuple, conn, memory_bytes: int | None) -> None:
+    import os
+
+    try:
+        os.setsid()
+    except OSError:
+        pass
     _apply_memory_cap(memory_bytes)
     try:
         conn.send(("ok", fn(*args)))
@@ -125,18 +155,21 @@ def _call_timed(
     child_conn.close()
     try:
         deadline = time.monotonic() + timeout
-        while proc.is_alive():
+        # A large return blocks in send() until the parent reads. Waiting for
+        # the worker to exit first deadlocks until the timeout drops the result.
+        while proc.is_alive() and not parent_conn.poll():
             if measure_memory:
                 rss = _rss_bytes(proc.pid)
                 if rss is not None:
                     peak_bytes = max(peak_bytes or 0, rss)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                proc.kill()
-                proc.join()
+                print(f"warning: timed out after {timeout:g}s", file=sys.stderr, flush=True)
+                _stop_process_group(proc)
                 return None, None if peak_bytes is None else peak_bytes / 1024**2
             # shortcut: sampling can miss brief spikes; use OS accounting if exact peaks are required.
-            proc.join(min(MEMORY_SAMPLE_SECONDS, remaining) if measure_memory else remaining)
+            wait = min(MEMORY_SAMPLE_SECONDS, remaining) if measure_memory else remaining
+            parent_conn.poll(wait)
         peak_mib = None if peak_bytes is None else peak_bytes / 1024**2
         if proc.exitcode not in (0, None):
             print(f"warning: worker exited with code {proc.exitcode}", file=sys.stderr)
@@ -151,8 +184,7 @@ def _call_timed(
     finally:
         parent_conn.close()
         if proc.is_alive():
-            proc.kill()
-            proc.join()
+            _stop_process_group(proc)
         proc.close()
 
 

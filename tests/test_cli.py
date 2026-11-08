@@ -10,7 +10,12 @@ def test_matrix_payload_is_include_of_ids():
         Experiment("a", "score_per_measure", "t", ("d",), ("m",)),
         Experiment("b", "score_per_measure", "t", ("d",), ("m",)),
     ]
-    assert matrix_payload(experiments) == {"include": [{"id": "a"}, {"id": "b"}]}
+    assert matrix_payload(experiments) == {
+        "include": [
+            {"id": "a", "type": "score_per_measure"},
+            {"id": "b", "type": "score_per_measure"},
+        ]
+    }
 
 
 def _layout(root: Path) -> None:
@@ -39,7 +44,7 @@ def test_matrix_cli_prints_include(tmp_path: Path, capsys):
     _layout(tmp_path)
     assert main(["matrix"], root=tmp_path) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload == {"include": [{"id": "ex1"}]}
+    assert payload == {"include": [{"id": "ex1", "type": "score_per_measure"}]}
 
 
 def test_run_unknown_id_exits_one(tmp_path: Path, capsys):
@@ -136,6 +141,49 @@ def test_run_dispatches_score_for_fastr(tmp_path: Path, monkeypatch):
     assert main(["run", "fastr"], root=root) == 0
     assert called["type"] == "score_for_fastr"
     assert (root / "output" / "fastr.png").is_file()
+
+
+def test_run_dispatches_coverage_with_filter(tmp_path: Path, monkeypatch):
+    root = tmp_path
+    (root / "datasets" / "ds_one").mkdir(parents=True)
+    (root / "tools" / "fake-measure").mkdir(parents=True)
+    (root / "datasets" / "ds_one" / "a.txt").write_text("a")
+    (root / "experiments.json").write_text(
+        json.dumps(
+            {
+                "experiments": [
+                    {
+                        "id": "coverage",
+                        "type": "coverage_with_filter",
+                        "title": "t",
+                        "datasets": ["ds_one"],
+                        "tools": ["fake-measure"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    called = {"coverage": 0, "fastr": 0}
+
+    def fake_coverage(experiment, _root, *, output_dir, **_kwargs):
+        called["coverage"] += 1
+        output_dir.mkdir(parents=True, exist_ok=True)
+        (output_dir / f"{experiment.id}.png").write_bytes(b"png")
+        return {}
+
+    def fake_fastr(*_args, **_kwargs):
+        called["fastr"] += 1
+        return {}
+
+    monkeypatch.setattr(
+        "experiment_runner.cli.run_coverage_with_filter", fake_coverage
+    )
+    monkeypatch.setattr("experiment_runner.cli.run_score_for_fastr", fake_fastr)
+    assert main(["run", "coverage"], root=root) == 0
+    assert called["coverage"] == 1
+    assert called["fastr"] == 0
+    assert (root / "output" / "coverage.png").is_file()
 
 
 def test_run_dispatches_score_for_random_filter(tmp_path: Path, monkeypatch):

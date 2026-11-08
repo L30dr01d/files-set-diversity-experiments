@@ -12,6 +12,7 @@ KNOWN_TYPES = frozenset(
         "score_for_fastr",
         "score_for_random_filter",
         "score_for_panhard",
+        "coverage_with_filter",
     }
 )
 

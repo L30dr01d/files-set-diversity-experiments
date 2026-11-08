@@ -8,7 +8,7 @@ import pytest
 
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, WORKER_MEMORY_BYTES
 from experiment_runner.timeout import call_score, hang_score, kill_self, quick_score
-from experiment_runner.timeout import call_timed, hang_reduce, raise_score
+from experiment_runner.timeout import call_timed, hang_reduce, raise_score, wide_ids
 
 
 def test_timeout_constant_is_six_hours():
@@ -35,11 +35,28 @@ def test_call_timed_returns_none_on_timeout(tmp_path: Path):
     assert call_timed(hang_reduce, (tmp_path, "FAST++", 50.0), timeout=0.5) is None
 
 
+def test_call_timed_kills_grandchild():
+    import subprocess
+
+    from experiment_runner.timeout import hang_with_grandchild
+
+    call_timed(hang_with_grandchild, (), timeout=0.5)
+    time.sleep(0.3)
+    found = subprocess.run(["pgrep", "-f", "covtimeoutsleep"], capture_output=True)
+    assert found.returncode != 0
+
+
 def test_call_timed_returns_reduce_result(tmp_path: Path):
     def quick_reduce(_files_dir, _algo, _pct):
         return ["a.txt"]
 
     assert call_timed(quick_reduce, (tmp_path, "FAST-CS", 10.0), timeout=5) == ["a.txt"]
+
+
+def test_call_timed_returns_a_result_bigger_than_the_pipe():
+    value = call_timed(wide_ids, (20_000,), timeout=5, memory_bytes=None)
+    assert isinstance(value, frozenset)
+    assert len(value) == 20_000
 
 
 def test_call_score_returns_none_when_score_raises(tmp_path: Path, capsys):

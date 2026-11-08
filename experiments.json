@@ -398,7 +398,8 @@
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
-      ]
+      ],
+      "disable_reason": "Takes longer than 6 hr"
     },
     {
       "id": "20_algo_panhard_filter",
@@ -434,6 +435,18 @@
         "levassor-measure",
         "poisson-measure",
         "ncd1-measure"
+      ]
+    },
+    {
+      "id": "22_coverage_wih_filter",
+      "type": "coverage_with_filter",
+      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "datasets": [
+        "001_random_sv_50",
+        "018_duplicates_001_sv_100"
+      ],
+      "tools": [
+        "fast-filter"
       ]
     }
   ]

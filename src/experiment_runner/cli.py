@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from experiment_runner.config import ConfigError, Experiment, load_config
+from experiment_runner.coverage_with_filter import run_coverage_with_filter
 from experiment_runner.measure_per_set import run_measure_per_set
 from experiment_runner.score_for_fastr import run_score_for_fastr
 from experiment_runner.score_for_panhard import run_score_for_panhard
@@ -15,7 +16,13 @@ from experiment_runner.score_per_measure import run_score_per_measure
 
 
 def matrix_payload(experiments: Sequence[Experiment]) -> dict:
-    return {"include": [{"id": exp.id} for exp in experiments if exp.disable_reason is None]}
+    return {
+        "include": [
+            {"id": exp.id, "type": exp.type}
+            for exp in experiments
+            if exp.disable_reason is None
+        ]
+    }
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -55,6 +62,9 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             return 0
         if match.type == "score_for_panhard":
             run_score_for_panhard(match, root, output_dir=root / "output")
+            return 0
+        if match.type == "coverage_with_filter":
+            run_coverage_with_filter(match, root, output_dir=root / "output")
             return 0
         raise ConfigError(f"unknown type: {match.type}")
     except Exception as exc:  # noqa: BLE001

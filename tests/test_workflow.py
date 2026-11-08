@@ -39,10 +39,11 @@ def test_workflow_uses_verified_latest_stable_action_releases():
         assert f"uses: {action}@{version}\n" in TEXT
 
 
-def test_workflow_builds_pages_from_complete_current_run_on_default_branch():
+def test_workflow_builds_gallery_unless_the_run_was_cancelled():
     site = TEXT.split("\n  site:\n")[1].split("\n  deploy:\n")[0]
     assert "needs: [matrix, experiment]" in site
-    assert "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)" in site
+    job_if = next(line.strip() for line in site.splitlines() if line.strip().startswith("if:"))
+    assert job_if == "if: ${{ !cancelled() }}"
     assert "merge-multiple: true" in site
     assert "path: site/public/plots" in site
     assert "run-id:" not in site
@@ -55,15 +56,15 @@ def test_workflow_builds_pages_from_complete_current_run_on_default_branch():
     assert "path: site/dist" in site
     assert "pages: read" in site
     assert "pages: write" not in site
-    assert "always()" in site
-    assert "!cancelled()" in site
 
 
 def test_workflow_serializes_deployment_without_freshness_check():
     deploy = TEXT.split("\n  deploy:\n")[1]
     assert "needs: site" in deploy
-    assert "success()" in deploy
-    assert "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)" in deploy
+    job_if = next(line.strip() for line in deploy.splitlines() if line.strip().startswith("if:"))
+    assert job_if == (
+        "if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
+    )
     assert "pages: write" in deploy
     assert "id-token: write" in deploy
     assert "name: github-pages" in deploy
@@ -80,9 +81,26 @@ def test_empty_matrix_skips_experiments_but_allows_gallery():
     experiment = TEXT.split("\n  experiment:\n")[1].split("\n  site:\n")[0]
     site = TEXT.split("\n  site:\n")[1].split("\n  deploy:\n")[0]
     assert "if: needs.matrix.outputs.matrix != '{\"include\":[]}'" in experiment
-    assert "always()" in site
     assert "!cancelled()" in site
-    assert "needs.matrix.result == 'success'" in site
+    assert "needs.matrix.result" not in site
     assert "needs.experiment.result == 'success'" not in site
     assert "if: needs.experiment.result != 'skipped'" in site
     assert "continue-on-error: true" in site
+
+
+def test_coverage_experiment_installs_clang():
+    experiment = TEXT.split("\n  experiment:\n")[1].split("\n  site:\n")[0]
+    guard = "matrix.type == 'coverage_with_filter'"
+    install = (
+        "sudo apt-get install -y clang llvm autoconf autotools-dev bison flex "
+        "libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev"
+    )
+    assert guard in experiment
+    assert "clang" in experiment
+    assert "llvm" in experiment
+    run_at = experiment.index("experiment_runner run")
+    step = experiment[experiment.index(guard) : run_at]
+    assert install in step
+    assert "\n      - " not in step.split(install, 1)[0]
+    assert "vvp" not in step
+    assert "--enable-dev-gcov" not in TEXT
