@@ -62,9 +62,7 @@ def test_workflow_serializes_deployment_without_freshness_check():
     deploy = TEXT.split("\n  deploy:\n")[1]
     assert "needs: site" in deploy
     job_if = next(line.strip() for line in deploy.splitlines() if line.strip().startswith("if:"))
-    assert job_if == (
-        "if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
-    )
+    assert job_if == "if: ${{ !cancelled() }}"
     assert "pages: write" in deploy
     assert "id-token: write" in deploy
     assert "name: github-pages" in deploy

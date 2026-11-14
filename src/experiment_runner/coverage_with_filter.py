@@ -12,7 +12,6 @@ from pathlib import Path
 
 from experiment_runner.analyzer_coverage import (
     ImageCoverage,
-    adequate_tick,
     combine_images,
     hits_from_llvm_export,
     iverilog_command,
@@ -29,6 +28,7 @@ from fast_filter.suite import list_test_files, write_suite_file
 DESIGN_TIMEOUT_SECONDS = 120
 CATEGORIES = ("100", "75", "50", "25", "adequate")
 BUDGET_PERCENTS = (75, 50, 25)
+FILTER_DRAWS = 10
 RunFile = Callable[
     [str, Path, Path], ImageCoverage | dict[str, ImageCoverage | None] | None
 ]
@@ -47,46 +47,42 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
     datasets = list(experiment.datasets)
     fig, axes = plt.subplots(
         len(datasets),
-        2,
+        len(COLUMNS),
         figsize=(12, 5 * len(datasets)),
         squeeze=False,
         constrained_layout=True,
     )
     fig.suptitle(experiment.title)
     positions = list(range(len(CATEGORIES)))
-    width = 0.4
+    shifts = (-0.18, 0.18)
     for row, dataset in enumerate(datasets):
-        icarus = results[dataset]["iverilog"]["adequate"]
-        verilator = results[dataset]["verilator"]["adequate"]
-        if (icarus["kept"], icarus["total"]) == (verilator["kept"], verilator["total"]):
-            adequate_label = adequate_tick(icarus["kept"], icarus["total"])
-        else:
-            adequate_label = (
-                "adequate\n"
-                f"Icarus {icarus['kept']} files, {round(100 * icarus['kept'] / icarus['total'])}%\n"
-                f"Verilator {verilator['kept']} files, {round(100 * verilator['kept'] / verilator['total'])}%"
-            )
-        tick_labels = [f"{category}%" for category in CATEGORIES[:-1]]
-        tick_labels.append(adequate_label)
         for col, (field, title) in enumerate(COLUMNS):
             ax = axes[row][col]
             peak = 0.0
-            for shift, (analyzer, series, color) in zip((-width / 2, width / 2), ANALYZERS):
-                heights = [
-                    float(results[dataset][analyzer][category][field])
-                    for category in CATEGORIES
-                ]
-                peak = max(peak, *heights)
-                bars = ax.bar(
-                    [position + shift for position in positions],
-                    heights,
-                    width=width,
-                    color=color,
-                    label=series,
-                )
-                ax.bar_label(bars, fmt="%.1f", padding=2, fontsize=9)
-            ax.set_title(title)
+            for shift, (analyzer, series, color) in zip(shifts, ANALYZERS):
+                cells = results[dataset][analyzer]
+                full = float(cells["100"][field])
+                peak = max(peak, full)
+                ax.bar([shift], [full], width=0.3, color=color, label=series)
+                for index, category in enumerate(CATEGORIES[1:], start=1):
+                    samples = [float(item[field]) for item in cells[category]]
+                    peak = max(peak, *samples)
+                    plotted = ax.boxplot(
+                        [samples],
+                        positions=[index + shift],
+                        widths=0.3,
+                        whis=1.5,
+                        showfliers=True,
+                        patch_artist=True,
+                        manage_ticks=False,
+                        medianprops={"color": "black"},
+                    )
+                    for box in plotted["boxes"]:
+                        box.set_facecolor(color)
+            ax.set_title(f"{dataset}\n{title}")
             ax.set_ylabel("%")
+            tick_labels = [f"{category}%" for category in CATEGORIES[:-1]]
+            tick_labels.append("adequate")
             ax.set_xticks(positions, tick_labels)
             ax.set_xlim(-0.5, len(CATEGORIES) - 0.5)
             ax.set_ylim(0, max(peak * 1.25, 1))
@@ -585,7 +581,9 @@ def run_coverage_with_filter(
             for analyzer, _series, _color in ANALYZERS
         }
         budgets = {
-            str(percent): list(reduce_fn(files_dir, "FAST++", percent))
+            str(percent): [
+                list(reduce_fn(files_dir, "FAST++", percent)) for _draw in range(FILTER_DRAWS)
+            ]
             for percent in BUDGET_PERCENTS
         }
         dataset_results: dict = {}
@@ -593,27 +591,31 @@ def run_coverage_with_filter(
             coverages = stored[analyzer]
             universe = combine_images(coverages)
             by_name = {path.name: coverage for path, coverage in zip(paths, coverages)}
-            kept_names = _select_adequate(
-                paths,
-                coverages,
-                adequate_fn,
-                output_dir / "adequate" / dataset_name / analyzer,
-            )
+            adequate_work = output_dir / "adequate" / dataset_name / analyzer
+            adequate_draws = [
+                _select_adequate(paths, coverages, adequate_fn, adequate_work)
+                for _draw in range(FILTER_DRAWS)
+            ]
             cells = {"100": _scores(coverages, universe, total, total)}
             for percent in BUDGET_PERCENTS:
-                names = budgets[str(percent)]
-                cells[str(percent)] = _scores(
+                cells[str(percent)] = [
+                    _scores(
+                        _coverages_named(names, by_name),
+                        universe,
+                        len(names),
+                        total,
+                    )
+                    for names in budgets[str(percent)]
+                ]
+            cells["adequate"] = [
+                _scores(
                     _coverages_named(names, by_name),
                     universe,
                     len(names),
                     total,
                 )
-            cells["adequate"] = _scores(
-                _coverages_named(kept_names, by_name),
-                universe,
-                len(kept_names),
-                total,
-            )
+                for names in adequate_draws
+            ]
             dataset_results[analyzer] = cells
         results[dataset_name] = dataset_results
     _write_figure(results, experiment, output_dir)
