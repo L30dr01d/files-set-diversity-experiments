@@ -205,6 +205,16 @@ def _repeated(line: float, mcdc: float) -> list[dict]:
     return [_score(line, mcdc) for _ in range(10)]
 
 
+def _adequate(line: float, mcdc: float, kept: int) -> list[dict]:
+    return [_score(line, mcdc, kept=kept, total=50) for _ in range(10)]
+
+
+def _facecolor(patch) -> tuple:
+    from matplotlib.colors import to_rgba
+
+    return to_rgba(patch.get_facecolor())
+
+
 def test_plot_labels_adequate_share(tmp_path: Path) -> None:
     import matplotlib
 
@@ -234,7 +244,7 @@ def test_plot_labels_adequate_share(tmp_path: Path) -> None:
         "75": _repeated(30.0, 30.0),
         "50": _repeated(20.0, 20.0),
         "25": _repeated(10.0, 10.0),
-        "adequate": _repeated(40.0, 40.0),
+        "adequate": _adequate(40.0, 40.0, 12),
     }
     fig = plot_coverage_bars(
         {"ds_one": {"iverilog": icarus, "verilator": verilator}},
@@ -245,25 +255,52 @@ def test_plot_labels_adequate_share(tmp_path: Path) -> None:
         assert [ax.get_title() for ax in fig.axes] == [
             "ds_one\nLine coverage",
             "ds_one\nMC/DC",
+            "ds_one\nLine coverage",
+            "ds_one\nMC/DC",
         ]
-        expected_ticks = ["100%", "75%", "50%", "25%", "adequate"]
-        for ax in fig.axes:
-            assert ax.get_ylabel() == "%"
-            assert [tick.get_text() for tick in ax.get_xticklabels()] == expected_ticks
-            assert sum(isinstance(patch, Rectangle) for patch in ax.patches) == 2
-            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 8
-            assert [text.get_text() for text in ax.get_legend().get_texts()] == [
-                "Icarus",
-                "Verilator",
-            ]
+        assert [ax.get_ylabel() for ax in fig.axes] == [
+            "Verilator\n%",
+            "%",
+            "Icarus\n%",
+            "%",
+        ]
+        budget = ["100%", "75%", "50%", "25%"]
+        verilator_ticks = budget + ["adequate\n12 files, 24%"]
+        icarus_ticks = budget + ["adequate\n1 files, 2%"]
+        for ax, ticks, color in (
+            (fig.axes[0], verilator_ticks, "C1"),
+            (fig.axes[1], verilator_ticks, "C1"),
+            (fig.axes[2], icarus_ticks, "C0"),
+            (fig.axes[3], icarus_ticks, "C0"),
+        ):
+            assert [tick.get_text() for tick in ax.get_xticklabels()] == ticks
+            rectangles = [patch for patch in ax.patches if isinstance(patch, Rectangle)]
+            boxes = [patch for patch in ax.patches if isinstance(patch, PathPatch)]
+            assert len(rectangles) == 1
+            assert rectangles[0].get_width() == 0.6
+            assert len(boxes) == 4
+            assert ax.get_legend() is None
+            assert _facecolor(rectangles[0]) == to_rgba(color)
+            assert [_facecolor(box) for box in boxes] == [to_rgba(color)] * 4
             fliers = [line for line in ax.lines if line.get_marker() == "o"]
-            assert any(len(line.get_xdata()) for line in fliers)
+            has_flier = any(len(line.get_xdata()) for line in fliers)
+            assert has_flier is (color == "C0")
             horizontal = [
-                to_rgba(line.get_color())
+                line
                 for line in ax.lines
                 if len(line.get_ydata()) == 2 and line.get_ydata()[0] == line.get_ydata()[1]
             ]
-            assert to_rgba("C1") not in horizontal
+            assert horizontal
+            assert [to_rgba(line.get_color()) for line in horizontal] == [to_rgba("black")] * len(
+                horizontal
+            )
+        from experiment_runner.coverage_with_filter import ANALYZERS, PLOT_ROWS
+
+        colors = {name: series_color for name, _series, series_color in ANALYZERS}
+        assert [name for name, _series, _color in PLOT_ROWS] == ["verilator", "iverilog"]
+        assert [series_color for _name, _series, series_color in PLOT_ROWS] == [
+            colors[name] for name, _series, _color in PLOT_ROWS
+        ]
         png = tmp_path / "coverage.png"
         svg = png.with_suffix(".svg")
         fig.savefig(png)
@@ -274,12 +311,13 @@ def test_plot_labels_adequate_share(tmp_path: Path) -> None:
         plt.close(fig)
 
 
-def test_plot_names_each_dataset_row() -> None:
+def test_plot_names_each_dataset_row(tmp_path: Path) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.patches import PathPatch
+    from matplotlib.colors import to_rgba
+    from matplotlib.patches import PathPatch, Rectangle
 
     experiment = Experiment(
         id="coverage",
@@ -289,31 +327,76 @@ def test_plot_names_each_dataset_row() -> None:
         tools=("fast-filter",),
     )
 
-    def cells() -> dict:
+    def cells(kept: int, total: int) -> dict:
         return {
-            "100": _score(40.0, 40.0, kept=50, total=50),
+            "100": _score(40.0, 40.0, kept=total, total=total),
             "75": _repeated(30.0, 30.0),
             "50": _repeated(20.0, 20.0),
             "25": _repeated(10.0, 10.0),
-            "adequate": _repeated(40.0, 40.0),
+            "adequate": [_score(40.0, 40.0, kept=kept, total=total) for _ in range(10)],
         }
 
     fig = plot_coverage_bars(
         {
-            "ds_one": {"iverilog": cells(), "verilator": cells()},
-            "ds_two": {"iverilog": cells(), "verilator": cells()},
+            "ds_one": {"iverilog": cells(1, 50), "verilator": cells(12, 50)},
+            "ds_two": {"iverilog": cells(8, 40), "verilator": cells(4, 40)},
         },
         experiment,
     )
     try:
-        assert [ax.get_title() for ax in fig.axes] == [
+        pair = [
             "ds_one\nLine coverage",
             "ds_one\nMC/DC",
             "ds_two\nLine coverage",
             "ds_two\nMC/DC",
         ]
-        for ax in fig.axes:
-            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 8
+        assert [ax.get_title() for ax in fig.axes] == pair + pair
+        budget = ["100%", "75%", "50%", "25%"]
+        expected_ticks = [
+            budget + ["adequate\n12 files, 24%"],
+            budget + ["adequate\n12 files, 24%"],
+            budget + ["adequate\n4 files, 10%"],
+            budget + ["adequate\n4 files, 10%"],
+            budget + ["adequate\n1 files, 2%"],
+            budget + ["adequate\n1 files, 2%"],
+            budget + ["adequate\n8 files, 20%"],
+            budget + ["adequate\n8 files, 20%"],
+        ]
+        assert [ax.get_ylabel() for ax in fig.axes] == [
+            "Verilator\n%",
+            "%",
+            "%",
+            "%",
+            "Icarus\n%",
+            "%",
+            "%",
+            "%",
+        ]
+        assert [
+            [tick.get_text() for tick in ax.get_xticklabels()] for ax in fig.axes
+        ] == expected_ticks
+        for ax in fig.axes[:4]:
+            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 4
+            painted = [
+                patch
+                for patch in ax.patches
+                if isinstance(patch, (Rectangle, PathPatch))
+            ]
+            assert [_facecolor(patch) for patch in painted] == [to_rgba("C1")] * len(painted)
+        for ax in fig.axes[4:]:
+            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 4
+            painted = [
+                patch
+                for patch in ax.patches
+                if isinstance(patch, (Rectangle, PathPatch))
+            ]
+            assert [_facecolor(patch) for patch in painted] == [to_rgba("C0")] * len(painted)
+        png = tmp_path / "coverage.png"
+        svg = png.with_suffix(".svg")
+        fig.savefig(png)
+        fig.savefig(svg)
+        assert png.is_file()
+        assert svg.is_file()
     finally:
         plt.close(fig)
 

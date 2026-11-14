@@ -12,6 +12,7 @@ from pathlib import Path
 
 from experiment_runner.analyzer_coverage import (
     ImageCoverage,
+    adequate_axis_label,
     combine_images,
     hits_from_llvm_export,
     iverilog_command,
@@ -38,6 +39,10 @@ ANALYZERS = (
     ("iverilog", "Icarus", "C0"),
     ("verilator", "Verilator", "C1"),
 )
+PLOT_ROWS = (
+    ("verilator", "Verilator", "C1"),
+    ("iverilog", "Icarus", "C0"),
+)
 COLUMNS = (("line", "Line coverage"), ("mcdc", "MC/DC"))
 
 
@@ -45,32 +50,32 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
     import matplotlib.pyplot as plt
 
     datasets = list(experiment.datasets)
+    column_count = len(datasets) * len(COLUMNS)
     fig, axes = plt.subplots(
-        len(datasets),
-        len(COLUMNS),
-        figsize=(12, 5 * len(datasets)),
+        len(PLOT_ROWS),
+        column_count,
+        figsize=(6 * column_count, 5 * len(PLOT_ROWS)),
         squeeze=False,
         constrained_layout=True,
     )
     fig.suptitle(experiment.title)
     positions = list(range(len(CATEGORIES)))
-    shifts = (-0.18, 0.18)
-    for row, dataset in enumerate(datasets):
-        for col, (field, title) in enumerate(COLUMNS):
-            ax = axes[row][col]
-            peak = 0.0
-            for shift, (analyzer, series, color) in zip(shifts, ANALYZERS):
-                cells = results[dataset][analyzer]
+    for row, (analyzer, series, color) in enumerate(PLOT_ROWS):
+        for dataset_index, dataset in enumerate(datasets):
+            cells = results[dataset][analyzer]
+            for column_index, (field, title) in enumerate(COLUMNS):
+                col = dataset_index * len(COLUMNS) + column_index
+                ax = axes[row][col]
                 full = float(cells["100"][field])
-                peak = max(peak, full)
-                ax.bar([shift], [full], width=0.3, color=color, label=series)
+                peak = full
+                ax.bar([0], [full], width=0.6, color=color)
                 for index, category in enumerate(CATEGORIES[1:], start=1):
                     samples = [float(item[field]) for item in cells[category]]
                     peak = max(peak, *samples)
                     plotted = ax.boxplot(
                         [samples],
-                        positions=[index + shift],
-                        widths=0.3,
+                        positions=[index],
+                        widths=0.6,
                         whis=1.5,
                         showfliers=True,
                         patch_artist=True,
@@ -79,15 +84,14 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
                     )
                     for box in plotted["boxes"]:
                         box.set_facecolor(color)
-            ax.set_title(f"{dataset}\n{title}")
-            ax.set_ylabel("%")
-            tick_labels = [f"{category}%" for category in CATEGORIES[:-1]]
-            tick_labels.append("adequate")
-            ax.set_xticks(positions, tick_labels)
-            ax.set_xlim(-0.5, len(CATEGORIES) - 0.5)
-            ax.set_ylim(0, max(peak * 1.25, 1))
-            ax.legend(fontsize=8)
-            ax.grid(axis="y", alpha=0.3)
+                ax.set_title(f"{dataset}\n{title}")
+                ax.set_ylabel(f"{series}\n%" if col == 0 else "%")
+                tick_labels = [f"{category}%" for category in CATEGORIES[:-1]]
+                tick_labels.append(adequate_axis_label(cells["adequate"]))
+                ax.set_xticks(positions, tick_labels)
+                ax.set_xlim(-0.5, len(CATEGORIES) - 0.5)
+                ax.set_ylim(0, max(peak * 1.25, 1))
+                ax.grid(axis="y", alpha=0.3)
     return fig
 
 

@@ -159,7 +159,44 @@ def test_plot_colors_and_stop_line():
     stop = by_label["panhard stop"]
     assert list(stop.get_xdata()) == [1, 1]
     assert ax.get_xlabel() == "files count"
-    assert [tick.get_text() for tick in ax.get_xticklabels()] == ["3", "2"]
+    assert [tick.get_text() for tick in ax.get_xticklabels()] == ["", ""]
+
+
+def test_plot_shows_every_fifth_file_count_label():
+    experiment = _experiment()
+    steps = [
+        {
+            "remaining_count": count,
+            "measures": {
+                "panhard-measure": {"value": 0.5},
+                "levassor-measure": {"value": 0.4},
+            },
+        }
+        for count in range(4, 21)
+    ]
+    fig = plot_panhard_grid(
+        {"ds_one": {"stop_count": 6, "steps": steps}},
+        experiment,
+    )
+    assert [tick.get_text() for tick in fig.axes[0].get_xticklabels()] == [
+        "",
+        "5",
+        "",
+        "",
+        "",
+        "",
+        "10",
+        "",
+        "",
+        "",
+        "",
+        "15",
+        "",
+        "",
+        "",
+        "",
+        "20",
+    ]
 
 
 def test_cli_dispatches(tmp_path: Path, monkeypatch):

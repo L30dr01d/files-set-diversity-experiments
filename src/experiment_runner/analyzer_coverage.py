@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -45,6 +45,28 @@ def subset_percents(
 
 def adequate_tick(kept: int, total: int) -> str:
     return f"adequate\n{kept} files, {round(100 * kept / total)}%"
+
+
+def _sample_percent(kept: int, total: int) -> int:
+    if total == 0:
+        return 0
+    return round(100 * kept / total)
+
+
+def adequate_axis_label(samples: Sequence[Mapping]) -> str:
+    kepts = [int(sample["kept"]) for sample in samples]
+    percents = [
+        _sample_percent(int(sample["kept"]), int(sample["total"])) for sample in samples
+    ]
+    low_kept, high_kept = min(kepts), max(kepts)
+    low_percent, high_percent = min(percents), max(percents)
+    file_part = (
+        f"{low_kept} files" if low_kept == high_kept else f"{low_kept}-{high_kept} files"
+    )
+    percent_part = (
+        f"{low_percent}%" if low_percent == high_percent else f"{low_percent}-{high_percent}%"
+    )
+    return f"adequate\n{file_part}, {percent_part}"
 
 
 def whitebox_line(coverage: ImageCoverage) -> str:

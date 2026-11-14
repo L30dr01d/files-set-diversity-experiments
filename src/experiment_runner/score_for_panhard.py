@@ -142,7 +142,10 @@ def plot_panhard_grid(results: dict, experiment: Experiment):
         if not steps:
             continue
         positions = list(range(len(steps)))
-        labels = [str(step["remaining_count"]) for step in steps]
+        labels = [
+            str(count) if count % 5 == 0 else ""
+            for count in (int(step["remaining_count"]) for step in steps)
+        ]
         for i, tool in enumerate(tools):
             ys = []
             for step in steps:
