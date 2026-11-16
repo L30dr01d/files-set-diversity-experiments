@@ -25,7 +25,8 @@ def test_known_types_include_four_experiment_types():
             "measure_per_set",
             "score_for_fastr",
             "score_for_random_filter",
-            "score_for_panhard",
+            "score_for_panhard_dpi",
+            "score_for_panhard_rni",
             "coverage_with_filter",
         }
     )
@@ -146,7 +147,7 @@ def test_load_experiments_accepts_new_types(tmp_path: Path):
                 },
                 {
                     "id": "panhard",
-                    "type": "score_for_panhard",
+                    "type": "score_for_panhard_dpi",
                     "title": "Panhard filter",
                     "datasets": ["ds-a"],
                     "tools": ["panhard-measure"],
@@ -159,7 +160,7 @@ def test_load_experiments_accepts_new_types(tmp_path: Path):
         "measure_per_set",
         "score_for_fastr",
         "score_for_random_filter",
-        "score_for_panhard",
+        "score_for_panhard_dpi",
     ]
 
 

@@ -69,10 +69,23 @@ for ((oi = 0; oi < files_count && files_count > 1; ++oi)); do
   relative_len="$((all_lens - all_but_one_lens))"
   relative_lens_sum="$((relative_lens_sum + relative_len))"
 
+  # Individual files "badness" measures
   if [ -n "$VERBOSE" ]; then
-    relative_len_normalised="$(echo "scale=10; $relative_len / ${individual_lens[$oi]}" | bc)"
-    echo "$relative_len_normalised ${files[$oi]}" >&2
+    # rni = (K(xs) - K(xs\x_i)) / K (x_i | xs \ x_i)
+    rni="$(echo "scale=10; $relative_len / ${individual_lens[$oi]}" | bc)"
+
+    # dpi = 1 - K(xs\x_i) / K(xs)
+    dpi="$(echo "scale=10; 1 - ($all_but_one_lens / $all_lens)" | bc)"
+
+    echo "dpi $dpi rni $rni ${files[$oi]}" >&2
   fi
 done
+
+if [ -n "$VERBOSE" ]; then
+  {
+    printf "residual "
+    echo "scale=10; 1 - ($all_lens / $individual_lens_sum)" | bc
+  } >&2
+fi
 
 echo "scale=10; $relative_lens_sum / $individual_lens_sum" | bc

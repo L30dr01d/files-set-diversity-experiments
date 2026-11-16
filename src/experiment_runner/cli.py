@@ -60,8 +60,10 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
         if match.type == "score_for_random_filter":
             run_score_for_random_filter(match, root, output_dir=root / "output")
             return 0
-        if match.type == "score_for_panhard":
-            run_score_for_panhard(match, root, output_dir=root / "output")
+        if match.type in ("score_for_panhard_dpi", "score_for_panhard_rni"):
+            run_score_for_panhard(
+                match, root, ranking=match.type.rsplit("_", 1)[1], output_dir=root / "output"
+            )
             return 0
         if match.type == "coverage_with_filter":
             run_coverage_with_filter(match, root, output_dir=root / "output")

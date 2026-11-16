@@ -9,11 +9,12 @@ from panhard_filter.filter import filter_dir
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="panhard-filter")
+    parser.add_argument("--ranking", choices=("dpi", "rni"), required=True)
     parser.add_argument("--dont-stop", action="store_true")
     parser.add_argument("folder", type=Path)
     args = parser.parse_args(argv)
     try:
-        result = filter_dir(args.folder, dont_stop=args.dont_stop)
+        result = filter_dir(args.folder, ranking=args.ranking, dont_stop=args.dont_stop)
     except (ValueError, RuntimeError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

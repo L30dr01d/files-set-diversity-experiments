@@ -2,6 +2,8 @@ import stat
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from panhard_filter.cli import main
 from panhard_filter.filter import filter_dir, filter_paths
 
@@ -27,8 +29,9 @@ n=0
 for f in "$@"; do n=$((n + 1)); done
 echo "scale=10; $n / 10" | bc
 for f in "$@"; do
-  echo "1 $f" >&2
+  echo "dpi 1 rni 1 $f" >&2
 done
+echo "residual 0.125" >&2
 """,
     )
 
@@ -46,10 +49,11 @@ if [ "$1" = "--verbose" ]; then shift; fi
 n=0
 for f in "$@"; do n=$((n + 1)); done
 if [ "$n" -le 3 ]; then echo "0.1"; else echo "0.$n"; fi
-for f in "$@"; do echo "1 $f" >&2; done
+for f in "$@"; do echo "dpi 1 rni 1 $f" >&2; done
+echo "residual 0.125" >&2
 """,
     )
-    result = filter_dir(folder, script=script)
+    result = filter_dir(folder, ranking="dpi", script=script)
     assert result.stop_count == 3
     assert len(result.kept) == 3
     assert [step.remaining_count for step in result.steps] == [4, 3]
@@ -67,10 +71,11 @@ if [ "$1" = "--verbose" ]; then shift; fi
 n=0
 for f in "$@"; do n=$((n + 1)); done
 if [ "$n" -le 3 ]; then echo "0.1"; else echo "0.$n"; fi
-for f in "$@"; do echo "1 $f" >&2; done
+for f in "$@"; do echo "dpi 1 rni 1 $f" >&2; done
+echo "residual 0.125" >&2
 """,
     )
-    result = filter_dir(folder, dont_stop=True, script=script)
+    result = filter_dir(folder, ranking="dpi", dont_stop=True, script=script)
     assert result.stop_count == 3
     assert [step.remaining_count for step in result.steps] == [4, 3, 2]
     assert len(result.kept) == 3
@@ -82,7 +87,7 @@ def test_equal_score_is_not_a_drop_and_ends_at_two(tmp_path: Path):
     for name in ("a", "b", "c"):
         (folder / name).write_text(name)
     script = _fake(tmp_path)
-    result = filter_dir(folder, script=script)
+    result = filter_dir(folder, ranking="dpi", script=script)
     assert result.stop_count == 2
     assert [step.remaining_count for step in result.steps] == [3, 2]
 
@@ -98,10 +103,11 @@ def test_tie_removes_lower_path_string(tmp_path: Path):
         """#!/bin/sh
 if [ "$1" = "--verbose" ]; then shift; fi
 echo 0.5
-for f in "$@"; do echo "0.2 $f" >&2; done
+for f in "$@"; do echo "dpi 0.2 rni 0.2 $f" >&2; done
+echo "residual 0.125" >&2
 """,
     )
-    result = filter_paths(files, dont_stop=True, script=script)
+    result = filter_paths(files, ranking="dpi", dont_stop=True, script=script)
     removed_first = set(files) - set(result.steps[1].remaining)
     assert removed_first == {min(files, key=str)}
 
@@ -116,10 +122,11 @@ def test_path_with_space(tmp_path: Path):
         """#!/bin/sh
 if [ "$1" = "--verbose" ]; then shift; fi
 echo 0.4
-for f in "$@"; do echo "0.2 $f" >&2; done
+for f in "$@"; do echo "dpi 0.2 rni 0.2 $f" >&2; done
+echo "residual 0.125" >&2
 """,
     )
-    result = filter_dir(folder, script=script)
+    result = filter_dir(folder, ranking="dpi", script=script)
     assert result.stop_count == 2
     assert all(path.exists() for path in result.steps[0].remaining)
 
@@ -134,11 +141,14 @@ def test_cli_prints_kept(tmp_path: Path, monkeypatch, capsys):
         """#!/bin/sh
 if [ "$1" = "--verbose" ]; then shift; fi
 echo 0.5
-for f in "$@"; do echo "0.2 $f" >&2; done
+for f in "$@"; do echo "dpi 0.2 rni 0.2 $f" >&2; done
+echo "residual 0.125" >&2
 """,
     )
     monkeypatch.setattr("panhard_filter.filter._VENDORED", script)
-    assert main([str(folder)]) == 0
+    with pytest.raises(SystemExit, match="2"):
+        main([str(folder)])
+    assert main(["--ranking", "dpi", str(folder)]) == 0
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 2
 
@@ -155,8 +165,30 @@ def test_real_script_on_three_dataset_files(tmp_path: Path):
     ]
     for name in names:
         (tmp_path / name).write_bytes((DATASET / name).read_bytes())
-    result = filter_dir(tmp_path, dont_stop=True, script=REAL)
+    result = filter_dir(tmp_path, ranking="rni", dont_stop=True, script=REAL)
     assert [step.remaining_count for step in result.steps] == [3, 2]
     assert result.stop_count in (2, 3)
     assert len(result.kept) == result.stop_count
     assert list(tmp_path.iterdir())  # sources stay
+
+@pytest.mark.parametrize(("ranking", "removed"), [("dpi", "a"), ("rni", "c")])
+def test_uses_selected_ranking_and_returns_residual(tmp_path, ranking, removed):
+    paths = [tmp_path / name for name in ("a", "b", "c")]
+    script = _script(
+        tmp_path,
+        """#!/bin/sh
+shift
+echo 0.5
+for f in "$@"; do
+    case "${f##*/}" in
+        a) echo "dpi 0.1 rni 0.3 $f" >&2 ;;
+        b) echo "dpi 0.2 rni 0.2 $f" >&2 ;;
+        c) echo "dpi 0.3 rni 0.1 $f" >&2 ;;
+    esac
+done
+echo "residual 0.125" >&2
+""",
+    )
+    result = filter_paths(paths, ranking=ranking, script=script)
+    assert set(paths) - set(result.steps[1].remaining) == {tmp_path / removed}
+    assert result.steps[0].residual == 0.125

@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from experiment_runner.config import Experiment
 from experiment_runner.plotting import tool_color
 from experiment_runner.score_for_panhard import plot_panhard_grid, run_score_for_panhard
@@ -10,7 +12,7 @@ from panhard_filter import FilterResult, FilterStep
 def _experiment() -> Experiment:
     return Experiment(
         id="panhard_plot",
-        type="score_for_panhard",
+        type="score_for_panhard_dpi",
         title="Panhard",
         datasets=("ds_one",),
         tools=("panhard-measure", "levassor-measure"),
@@ -18,13 +20,14 @@ def _experiment() -> Experiment:
 
 
 def test_reuses_panhard_scores_and_scores_other_tools(tmp_path: Path):
-    def stub_filter(paths, *, dont_stop):
+    def stub_filter(paths, *, dont_stop, ranking):
+        assert ranking == "dpi"
         assert dont_stop is True
         current = [Path(p) for p in paths]
         steps = []
         while True:
             score = 0.2 if len(current) == 2 else 0.5
-            steps.append(FilterStep(len(current), score, tuple(current)))
+            steps.append(FilterStep(len(current), score, tuple(current), residual=0.125))
             if len(current) <= 2:
                 break
             current = current[:-1]
@@ -49,6 +52,7 @@ def test_reuses_panhard_scores_and_scores_other_tools(tmp_path: Path):
     result = run_score_for_panhard(
         _experiment(),
         root,
+        ranking="dpi",
         score_fns={"panhard-measure": panhard_score, "levassor-measure": levassor},
         filter_fn=stub_filter,
         output_dir=tmp_path / "output",
@@ -56,17 +60,19 @@ def test_reuses_panhard_scores_and_scores_other_tools(tmp_path: Path):
     steps = result["ds_one"]["steps"]
     assert panhard_calls == []
     assert [step["measures"]["panhard-measure"]["value"] for step in steps] == [0.5, 0.2]
+    assert steps[0]["measures"]["panhard-measure"]["residual"] == 0.125
     assert seen == [["a.txt", "b.txt", "c.txt"], ["a.txt", "b.txt"]]
     assert result["ds_one"]["stop_count"] == 2
     assert (tmp_path / "output" / "panhard_plot.png").is_file()
 
 
 def test_includes_panhard_scores_without_listing_the_tool(tmp_path: Path):
-    def stub_filter(paths, *, dont_stop):
+    def stub_filter(paths, *, dont_stop, ranking):
+        assert ranking == "dpi"
         current = [Path(p) for p in paths]
-        steps = [FilterStep(len(current), 0.5, tuple(current))]
+        steps = [FilterStep(len(current), 0.5, tuple(current), residual=0.125)]
         current = current[:-1]
-        steps.append(FilterStep(len(current), 0.2, tuple(current)))
+        steps.append(FilterStep(len(current), 0.2, tuple(current), residual=0.125))
         return FilterResult(kept=list(steps[-1].remaining), steps=steps, stop_count=2)
 
     root = tmp_path / "repo"
@@ -76,7 +82,7 @@ def test_includes_panhard_scores_without_listing_the_tool(tmp_path: Path):
         (files / name).write_text(name)
     experiment = Experiment(
         id="x",
-        type="score_for_panhard",
+        type="score_for_panhard_dpi",
         title="t",
         datasets=("ds_one",),
         tools=("levassor-measure",),
@@ -84,6 +90,7 @@ def test_includes_panhard_scores_without_listing_the_tool(tmp_path: Path):
     result = run_score_for_panhard(
         experiment,
         root,
+        ranking="dpi",
         score_fns={"levassor-measure": lambda path: 0.4},
         filter_fn=stub_filter,
         output_dir=tmp_path / "out",
@@ -96,7 +103,7 @@ def test_includes_panhard_scores_without_listing_the_tool(tmp_path: Path):
 def test_plot_always_includes_panhard_measure():
     experiment = Experiment(
         id="x",
-        type="score_for_panhard",
+        type="score_for_panhard_dpi",
         title="t",
         datasets=("ds_one",),
         tools=("levassor-measure",),
@@ -108,14 +115,14 @@ def test_plot_always_includes_panhard_measure():
                 {
                     "remaining_count": 3,
                     "measures": {
-                        "panhard-measure": {"value": 0.5},
+                        "panhard-measure": {"value": 0.5, "residual": 0.125},
                         "levassor-measure": {"value": 0.4},
                     },
                 },
                 {
                     "remaining_count": 2,
                     "measures": {
-                        "panhard-measure": {"value": 0.2},
+                        "panhard-measure": {"value": 0.2, "residual": 0.125},
                         "levassor-measure": {"value": 0.4},
                     },
                 },
@@ -137,14 +144,14 @@ def test_plot_colors_and_stop_line():
                 {
                     "remaining_count": 3,
                     "measures": {
-                        "panhard-measure": {"value": 0.5},
+                        "panhard-measure": {"value": 0.5, "residual": 0.125},
                         "levassor-measure": {"value": 0.4},
                     },
                 },
                 {
                     "remaining_count": 2,
                     "measures": {
-                        "panhard-measure": {"value": 0.2},
+                        "panhard-measure": {"value": 0.2, "residual": 0.125},
                         "levassor-measure": {"value": 0.4},
                     },
                 },
@@ -156,6 +163,8 @@ def test_plot_colors_and_stop_line():
     by_label = {line.get_label(): line for line in ax.lines}
     assert by_label["panhard-measure"].get_color() == tool_color("panhard-measure", 0)
     assert by_label["levassor-measure"].get_color() == tool_color("levassor-measure", 1)
+    vertices = ax.collections[0].get_paths()[0].vertices
+    assert {y for x, y in vertices if x == 0} == {0.375, 0.625}
     stop = by_label["panhard stop"]
     assert list(stop.get_xdata()) == [1, 1]
     assert ax.get_xlabel() == "files count"
@@ -168,7 +177,7 @@ def test_plot_shows_every_fifth_file_count_label():
         {
             "remaining_count": count,
             "measures": {
-                "panhard-measure": {"value": 0.5},
+                "panhard-measure": {"value": 0.5, "residual": 0.125},
                 "levassor-measure": {"value": 0.4},
             },
         }
@@ -199,7 +208,8 @@ def test_plot_shows_every_fifth_file_count_label():
     ]
 
 
-def test_cli_dispatches(tmp_path: Path, monkeypatch):
+@pytest.mark.parametrize("ranking", ["dpi", "rni"])
+def test_cli_dispatches(tmp_path: Path, monkeypatch, ranking):
     from experiment_runner.cli import main
 
     root = tmp_path
@@ -211,7 +221,7 @@ def test_cli_dispatches(tmp_path: Path, monkeypatch):
                 "experiments": [
                     {
                         "id": "ph",
-                        "type": "score_for_panhard",
+                        "type": f"score_for_panhard_{ranking}",
                         "title": "t",
                         "datasets": ["ds_one"],
                         "tools": ["panhard-measure"],
@@ -222,7 +232,8 @@ def test_cli_dispatches(tmp_path: Path, monkeypatch):
         encoding="utf-8",
     )
 
-    def fake_run(experiment, _root, *, output_dir, **_kwargs):
+    def fake_run(experiment, _root, *, output_dir, ranking: str):
+        assert ranking == experiment.type.rsplit("_", 1)[1]
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / f"{experiment.id}.png").write_bytes(b"png")
         return {}

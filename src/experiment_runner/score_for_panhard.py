@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from experiment_runner.config import Experiment
@@ -17,18 +17,17 @@ PANHARD = "panhard-measure"
 FilterFn = Callable[..., FilterResult]
 
 
-def _default_filter(paths: Sequence[Path], *, dont_stop: bool) -> FilterResult:
-    return filter_paths(paths, dont_stop=dont_stop)
-
-
-def _run_filter(filter_fn: FilterFn, path_strs: tuple[str, ...]) -> FilterResult:
-    return filter_fn([Path(p) for p in path_strs], dont_stop=True)
+def _run_filter(
+    filter_fn: FilterFn, path_strs: tuple[str, ...], ranking: str
+) -> FilterResult:
+    return filter_fn([Path(p) for p in path_strs], dont_stop=True, ranking=ranking)
 
 
 def run_score_for_panhard(
     experiment: Experiment,
     root: Path,
     *,
+    ranking: str,
     score_fns: Mapping[str, ScoreFn] | None = None,
     filter_fn: FilterFn | None = None,
     monotonic=None,
@@ -39,7 +38,7 @@ def run_score_for_panhard(
     if score_fns is None:
         score_fns = {name: load_score(name) for name in tools if name != PANHARD}
     if filter_fn is None:
-        filter_fn = _default_filter
+        filter_fn = filter_paths
     clock = monotonic or time.monotonic
     results: dict = {}
     for dataset_name in experiment.datasets:
@@ -50,7 +49,7 @@ def run_score_for_panhard(
         t0 = clock()
         raw = call_timed(
             _run_filter,
-            (filter_fn, tuple(str(p) for p in paths)),
+            (filter_fn, tuple(str(p) for p in paths), ranking),
             timeout=timeout,
         )
         filter_seconds = float(clock() - t0)
@@ -67,7 +66,11 @@ def run_score_for_panhard(
         steps: list[dict] = []
         for index, step in enumerate(raw.steps):
             measures = {
-                PANHARD: {"value": float(step.score), "seconds": None},
+                PANHARD: {
+                    "value": float(step.score),
+                    "residual": float(step.residual),
+                    "seconds": None,
+                },
             }
             extras = tuple(tool for tool in tools if tool != PANHARD)
             if extras:
@@ -151,11 +154,21 @@ def plot_panhard_grid(results: dict, experiment: Experiment):
             for step in steps:
                 value = step["measures"][tool]["value"]
                 ys.append(float("nan") if value is None else float(value))
+            color = tool_color(tool, i)
+            if tool == PANHARD:
+                residuals = [step["measures"][tool]["residual"] for step in steps]
+                ax.fill_between(
+                    positions,
+                    [value - abs(residual) for value, residual in zip(ys, residuals)],
+                    [value + abs(residual) for value, residual in zip(ys, residuals)],
+                    color=color,
+                    alpha=0.2,
+                )
             ax.plot(
                 positions,
                 ys,
                 marker="o",
-                color=tool_color(tool, i),
+                color=color,
                 label=tool,
             )
         counts = [int(step["remaining_count"]) for step in steps]

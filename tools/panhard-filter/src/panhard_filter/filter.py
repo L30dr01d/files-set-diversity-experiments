@@ -13,6 +13,7 @@ class FilterStep:
     remaining_count: int
     score: float
     remaining: tuple[Path, ...]
+    residual: float
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,11 @@ def _list_files(files_dir: Path) -> list[Path]:
     return paths
 
 
-def rank_set(paths: Sequence[Path], *, script: Path) -> tuple[float, list[tuple[float, Path]]]:
+def rank_set(
+    paths: Sequence[Path], *, script: Path, ranking: str
+) -> tuple[float, float, list[tuple[float, Path]]]:
+    if ranking not in ("dpi", "rni"):
+        raise ValueError(f"unknown Panhard ranking method: {ranking}")
     result = subprocess.run(
         [str(script), "--verbose", *[str(p) for p in paths]],
         check=True,
@@ -42,17 +47,25 @@ def rank_set(paths: Sequence[Path], *, script: Path) -> tuple[float, list[tuple[
         text=True,
     )
     score = float(result.stdout.strip())
-    ranking: list[tuple[float, Path]] = []
+    ranked: list[tuple[float, Path]] = []
+    residual = None
     for line in result.stderr.splitlines():
         if not line.strip():
             continue
-        value, raw_path = line.split(maxsplit=1)
-        ranking.append((float(value), Path(raw_path)))
-    if len(ranking) != len(paths):
+        if line.startswith("residual "):
+            residual = float(line.split(maxsplit=1)[1])
+            continue
+        dpi_label, dpi, rni_label, rni, raw_path = line.split(maxsplit=4)
+        if (dpi_label, rni_label) != ("dpi", "rni"):
+            raise ValueError(f"unexpected panhard-xz output: {line}")
+        ranked.append((float(dpi if ranking == "dpi" else rni), Path(raw_path)))
+    if len(ranked) != len(paths):
         raise RuntimeError(
-            f"panhard-xz ranked {len(ranking)} files, expected {len(paths)}"
+            f"panhard-xz ranked {len(ranked)} files, expected {len(paths)}"
         )
-    return score, ranking
+    if residual is None:
+        raise RuntimeError("panhard-xz did not report a residual")
+    return score, residual, ranked
 
 
 def _least_important(ranking: Sequence[tuple[float, Path]]) -> Path:
@@ -62,6 +75,7 @@ def _least_important(ranking: Sequence[tuple[float, Path]]) -> Path:
 def filter_paths(
     paths: Sequence[Path],
     *,
+    ranking: str,
     dont_stop: bool = False,
     script: Path | None = None,
 ) -> FilterResult:
@@ -73,10 +87,10 @@ def filter_paths(
     stop_count: int | None = None
     previous: float | None = None
     while True:
-        score, ranking = rank_set(current, script=script)
+        score, residual, ranked = rank_set(current, script=script, ranking=ranking)
         remaining = tuple(current)
         steps.append(
-            FilterStep(remaining_count=len(remaining), score=score, remaining=remaining)
+            FilterStep(len(remaining), score, remaining, residual)
         )
         if previous is not None and score < previous and stop_count is None:
             stop_count = len(remaining)
@@ -84,7 +98,7 @@ def filter_paths(
                 break
         if len(current) <= 2:
             break
-        victim = _least_important(ranking).resolve()
+        victim = _least_important(ranked).resolve()
         nxt = [path for path in current if path.resolve() != victim]
         if len(nxt) != len(current) - 1:
             raise RuntimeError(f"ranked file not in the set: {victim}")
@@ -96,5 +110,13 @@ def filter_paths(
     return FilterResult(kept=list(kept), steps=steps, stop_count=stop_count)
 
 
-def filter_dir(files_dir: Path, *, dont_stop: bool = False, script: Path | None = None) -> FilterResult:
-    return filter_paths(_list_files(files_dir), dont_stop=dont_stop, script=script)
+def filter_dir(
+    files_dir: Path,
+    *,
+    ranking: str,
+    dont_stop: bool = False,
+    script: Path | None = None,
+) -> FilterResult:
+    return filter_paths(
+        _list_files(files_dir), ranking=ranking, dont_stop=dont_stop, script=script
+    )
