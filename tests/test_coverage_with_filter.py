@@ -2,7 +2,6 @@ from pathlib import Path
 
 from experiment_runner.analyzer_coverage import ImageCoverage
 from experiment_runner.config import Experiment
-from experiment_runner.coverage_with_filter import plot_coverage_bars
 
 
 def test_failed_profile_export_warns_and_keeps_the_other_image(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -197,210 +196,6 @@ def test_run_coverage_with_filter_defaults_to_default_run_file() -> None:
     assert default_run_file is not None
 
 
-def _score(line: float, mcdc: float, kept: int = 1, total: int = 50) -> dict:
-    return {"line": line, "mcdc": mcdc, "kept": kept, "total": total}
-
-
-def _repeated(line: float, mcdc: float) -> list[dict]:
-    return [_score(line, mcdc) for _ in range(10)]
-
-
-def _adequate(line: float, mcdc: float, kept: int) -> list[dict]:
-    return [_score(line, mcdc, kept=kept, total=50) for _ in range(10)]
-
-
-def _facecolor(patch) -> tuple:
-    from matplotlib.colors import to_rgba
-
-    return to_rgba(patch.get_facecolor())
-
-
-def test_plot_labels_adequate_share(tmp_path: Path) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import to_rgba
-    from matplotlib.patches import PathPatch, Rectangle
-
-    experiment = Experiment(
-        id="coverage",
-        type="coverage_with_filter",
-        title="Viewer title",
-        datasets=("ds_one",),
-        tools=("fast-filter",),
-    )
-    icarus_adequate = _repeated(10.0, 10.0)
-    icarus_adequate[-1] = _score(80.0, 80.0)
-    icarus = {
-        "100": _score(40.0, 40.0, kept=50, total=50),
-        "75": _repeated(30.0, 30.0),
-        "50": _repeated(20.0, 20.0),
-        "25": _repeated(10.0, 10.0),
-        "adequate": icarus_adequate,
-    }
-    verilator = {
-        "100": _score(40.0, 40.0, kept=50, total=50),
-        "75": _repeated(30.0, 30.0),
-        "50": _repeated(20.0, 20.0),
-        "25": _repeated(10.0, 10.0),
-        "adequate": _adequate(40.0, 40.0, 12),
-    }
-    fig = plot_coverage_bars(
-        {"ds_one": {"iverilog": icarus, "verilator": verilator}},
-        experiment,
-    )
-    try:
-        assert fig._suptitle.get_text() == "Viewer title"
-        assert [ax.get_title() for ax in fig.axes] == [
-            "ds_one\nLine coverage",
-            "ds_one\nMC/DC",
-            "ds_one\nLine coverage",
-            "ds_one\nMC/DC",
-        ]
-        assert [ax.get_ylabel() for ax in fig.axes] == [
-            "Verilator\n%",
-            "%",
-            "Icarus\n%",
-            "%",
-        ]
-        budget = ["100%", "75%", "50%", "25%"]
-        verilator_ticks = budget + ["adequate\n12 files, 24%"]
-        icarus_ticks = budget + ["adequate\n1 files, 2%"]
-        for ax, ticks, color in (
-            (fig.axes[0], verilator_ticks, "C1"),
-            (fig.axes[1], verilator_ticks, "C1"),
-            (fig.axes[2], icarus_ticks, "C0"),
-            (fig.axes[3], icarus_ticks, "C0"),
-        ):
-            assert [tick.get_text() for tick in ax.get_xticklabels()] == ticks
-            rectangles = [patch for patch in ax.patches if isinstance(patch, Rectangle)]
-            boxes = [patch for patch in ax.patches if isinstance(patch, PathPatch)]
-            assert len(rectangles) == 1
-            assert rectangles[0].get_width() == 0.6
-            assert len(boxes) == 4
-            assert ax.get_legend() is None
-            assert _facecolor(rectangles[0]) == to_rgba(color)
-            assert [_facecolor(box) for box in boxes] == [to_rgba(color)] * 4
-            fliers = [line for line in ax.lines if line.get_marker() == "o"]
-            has_flier = any(len(line.get_xdata()) for line in fliers)
-            assert has_flier is (color == "C0")
-            horizontal = [
-                line
-                for line in ax.lines
-                if len(line.get_ydata()) == 2 and line.get_ydata()[0] == line.get_ydata()[1]
-            ]
-            assert horizontal
-            assert [to_rgba(line.get_color()) for line in horizontal] == [to_rgba("black")] * len(
-                horizontal
-            )
-        from experiment_runner.coverage_with_filter import ANALYZERS, PLOT_ROWS
-
-        colors = {name: series_color for name, _series, series_color in ANALYZERS}
-        assert [name for name, _series, _color in PLOT_ROWS] == ["verilator", "iverilog"]
-        assert [series_color for _name, _series, series_color in PLOT_ROWS] == [
-            colors[name] for name, _series, _color in PLOT_ROWS
-        ]
-        png = tmp_path / "coverage.png"
-        svg = png.with_suffix(".svg")
-        fig.savefig(png)
-        fig.savefig(svg)
-        assert png.is_file()
-        assert svg.is_file()
-    finally:
-        plt.close(fig)
-
-
-def test_plot_names_each_dataset_row(tmp_path: Path) -> None:
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import to_rgba
-    from matplotlib.patches import PathPatch, Rectangle
-
-    experiment = Experiment(
-        id="coverage",
-        type="coverage_with_filter",
-        title="Viewer title",
-        datasets=("ds_one", "ds_two"),
-        tools=("fast-filter",),
-    )
-
-    def cells(kept: int, total: int) -> dict:
-        return {
-            "100": _score(40.0, 40.0, kept=total, total=total),
-            "75": _repeated(30.0, 30.0),
-            "50": _repeated(20.0, 20.0),
-            "25": _repeated(10.0, 10.0),
-            "adequate": [_score(40.0, 40.0, kept=kept, total=total) for _ in range(10)],
-        }
-
-    fig = plot_coverage_bars(
-        {
-            "ds_one": {"iverilog": cells(1, 50), "verilator": cells(12, 50)},
-            "ds_two": {"iverilog": cells(8, 40), "verilator": cells(4, 40)},
-        },
-        experiment,
-    )
-    try:
-        pair = [
-            "ds_one\nLine coverage",
-            "ds_one\nMC/DC",
-            "ds_two\nLine coverage",
-            "ds_two\nMC/DC",
-        ]
-        assert [ax.get_title() for ax in fig.axes] == pair + pair
-        budget = ["100%", "75%", "50%", "25%"]
-        expected_ticks = [
-            budget + ["adequate\n12 files, 24%"],
-            budget + ["adequate\n12 files, 24%"],
-            budget + ["adequate\n4 files, 10%"],
-            budget + ["adequate\n4 files, 10%"],
-            budget + ["adequate\n1 files, 2%"],
-            budget + ["adequate\n1 files, 2%"],
-            budget + ["adequate\n8 files, 20%"],
-            budget + ["adequate\n8 files, 20%"],
-        ]
-        assert [ax.get_ylabel() for ax in fig.axes] == [
-            "Verilator\n%",
-            "%",
-            "%",
-            "%",
-            "Icarus\n%",
-            "%",
-            "%",
-            "%",
-        ]
-        assert [
-            [tick.get_text() for tick in ax.get_xticklabels()] for ax in fig.axes
-        ] == expected_ticks
-        for ax in fig.axes[:4]:
-            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 4
-            painted = [
-                patch
-                for patch in ax.patches
-                if isinstance(patch, (Rectangle, PathPatch))
-            ]
-            assert [_facecolor(patch) for patch in painted] == [to_rgba("C1")] * len(painted)
-        for ax in fig.axes[4:]:
-            assert sum(isinstance(patch, PathPatch) for patch in ax.patches) == 4
-            painted = [
-                patch
-                for patch in ax.patches
-                if isinstance(patch, (Rectangle, PathPatch))
-            ]
-            assert [_facecolor(patch) for patch in painted] == [to_rgba("C0")] * len(painted)
-        png = tmp_path / "coverage.png"
-        svg = png.with_suffix(".svg")
-        fig.savefig(png)
-        fig.savefig(svg)
-        assert png.is_file()
-        assert svg.is_file()
-    finally:
-        plt.close(fig)
-
-
 def _coverage_experiment() -> Experiment:
     return Experiment(
         id="coverage",
@@ -443,91 +238,108 @@ def _recording_adequate():
     return whiteboxes, suites, adequate_fn
 
 
-def test_percent_draws_are_shared_and_coverage_runs_once(tmp_path: Path) -> None:
+def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, monkeypatch):
+    from matplotlib.axes import Axes
+
     from experiment_runner.coverage_with_filter import run_coverage_with_filter
 
-    root = tmp_path / "repo"
-    _write_two_sv_files(root)
-    calls: list[float] = []
-    runs: list[tuple[str, str]] = []
+    dataset = _write_two_sv_files(tmp_path)
+    calls = []
+    set_runs = []
+    file_runs = []
+    plotted = []
+    boxplot = Axes.boxplot
 
-    def reduce_fn(files_dir: Path, algo: str, percent: float) -> list[str]:
-        assert algo == "FAST++"
-        assert files_dir == root / "datasets" / "ds_one"
+    def record_boxes(ax, samples, **kwargs):
+        plotted.append((ax, samples))
+        return boxplot(ax, samples, **kwargs)
+
+    monkeypatch.setattr(Axes, "boxplot", record_boxes)
+
+    def reduce_fn(files_dir, algo, percent):
+        assert (files_dir, algo) == (dataset, "FAST++")
         calls.append(percent)
-        names = sorted(p.name for p in files_dir.iterdir() if p.is_file())
-        return [names[0] if len(calls) % 3 == 1 else names[1]]
+        return ["first.sv" if len(calls) % 2 else "second.sv"]
 
-    def adequate_fn(_suite_path: Path, whitebox_path: Path) -> list[int]:
-        text = whitebox_path.read_text(encoding="utf-8")
-        return [1] if "icarus-only" in text else [2]
+    def run_set(analyzer, paths, directory, timeout):
+        assert timeout == 120
+        set_runs.append((analyzer, tuple(path.name for path in paths), directory))
+        if paths[0].name == "second.sv":
+            return None
+        if analyzer == "iverilog" and len(paths) == 1:
+            return _line_coverage(
+                frozenset({"l", "late-image"}), frozenset({"l", "late-image"})
+            )
+        return ImageCoverage(
+            frozenset({"l"}), frozenset({"l", "dormant"} if len(paths) == 2 else {"l"}),
+            frozenset({"m"}), frozenset({"m"}),
+        )
 
-    def run_file(analyzer: str, source: Path, _profile_dir: Path) -> ImageCoverage:
-        runs.append((analyzer, source.name))
-        if analyzer == "iverilog":
-            hit = frozenset({"icarus-only"}) if source.name == "first.sv" else frozenset()
-            return _line_coverage(hit, frozenset({"icarus-only"}))
-        hit = frozenset({"verilator-only"}) if source.name == "second.sv" else frozenset()
-        return _line_coverage(hit, frozenset({"verilator-only"}))
+    def run_file(analyzer, source, directory):
+        assert len(set_runs) == 80
+        file_runs.append((analyzer, source.name))
+        return _line_coverage(frozenset({"individual-only"}), frozenset({"individual-only"}))
 
+    output = tmp_path / "output"
     results = run_coverage_with_filter(
-        _coverage_experiment(),
-        root,
-        output_dir=tmp_path / "output",
-        run_file=run_file,
-        reduce_fn=reduce_fn,
-        adequate_fn=adequate_fn,
+        _coverage_experiment(), tmp_path, output_dir=output, run_file=run_file,
+        run_set=run_set, reduce_fn=reduce_fn, adequate_fn=lambda *_: [1],
     )
-    assert len(runs) == 4
     assert calls == [75] * 10 + [50] * 10 + [25] * 10
-    icarus = [item["line"] for item in results["ds_one"]["iverilog"]["75"]]
-    verilator = [item["line"] for item in results["ds_one"]["verilator"]["75"]]
-    assert icarus == [100.0, 0.0, 0.0, 100.0, 0.0, 0.0, 100.0, 0.0, 0.0, 100.0]
-    assert verilator == [0.0 if value == 100.0 else 100.0 for value in icarus]
-    assert [item["line"] for item in results["ds_one"]["verilator"]["adequate"]] == [100.0] * 10
-    assert results["ds_one"]["iverilog"]["100"]["line"] == 100.0
-    assert len(results["ds_one"]["iverilog"]["adequate"]) == 10
+    assert len(set_runs) == len({directory for _, _, directory in set_runs}) == 80
+    assert file_runs == [
+        (tool, name) for tool in ("iverilog", "verilator") for name in ("first.sv", "second.sv")
+    ]
+    for index in range(0, 80, 2):
+        first, second = set_runs[index:index + 2]
+        assert {first[0], second[0]} == {"iverilog", "verilator"}
+        assert first[1] == second[1]
+        if index < 20:
+            assert first[1] == ("first.sv", "second.sv")
+    for tool, budgets in results["budgets"].items():
+        assert list(budgets) == ["100", "75", "50", "25"]
+        full_line = 100 / 3 if tool == "iverilog" else 50.0
+        filtered = (
+            {"line": 200 / 3, "mcdc": 0.0} if tool == "iverilog"
+            else {"line": 50.0, "mcdc": 100.0}
+        )
+        assert budgets["100"] == [{"line": full_line, "mcdc": 100.0}] * 10
+        for budget in ("75", "50", "25"):
+            assert budgets[budget] == [filtered, {"line": 0.0, "mcdc": 0.0}] * 5
+    assert results["adequacy"] == {
+        tool: {"line": [1] * 10, "mcdc": [0] * 10, "joint": [1] * 10}
+        for tool in ("verilator", "iverilog", "both")
+    }
+
+    axes = plotted[0][0].figure.axes
+    assert len(axes) == 15
+    assert [index for index, ax in enumerate(axes) if not ax.get_visible()] == [10, 12]
+    assert [len(samples) for _, samples in plotted] == [4, 1, 4, 1, 1] * 2 + [1, 1, 1]
+    assert all(len(draws) == 10 for _, samples in plotted for draws in samples)
+    assert [tick.get_text() for tick in axes[0].get_xticklabels()] == ["100%", "75%", "50%", "25%"]
+    assert axes[1].get_ylabel() == "Files kept"
+    for axis, count in ((axes[1], 1), (axes[3], 0), (axes[14], 1)):
+        bottom, top = axis.get_ylim()
+        assert bottom < count < top
+    assert (output / "coverage.png").is_file()
+    assert (output / "coverage.svg").is_file()
 
 
-def test_each_dataset_is_filtered_on_its_own_files(tmp_path: Path) -> None:
+def test_experiment_requires_one_dataset(tmp_path):
+    from dataclasses import replace
+
+    import pytest
+
     from experiment_runner.coverage_with_filter import run_coverage_with_filter
 
-    root = tmp_path / "repo"
-    dirs = []
-    for name, stem in (("ds_one", "a.sv"), ("ds_two", "b.sv")):
-        directory = root / "datasets" / name
-        directory.mkdir(parents=True)
-        (directory / stem).write_text(stem, encoding="utf-8")
-        dirs.append(directory)
-    seen: list[Path] = []
+    for names in ((), ("ds_one", "ds_two")):
+        experiment = replace(_coverage_experiment(), datasets=names)
+        with pytest.raises(ValueError, match="exactly one dataset"):
+            run_coverage_with_filter(experiment, tmp_path, output_dir=tmp_path / "output")
 
-    def reduce_fn(files_dir: Path, _algo: str, _percent: float) -> list[str]:
-        seen.append(files_dir)
-        return [next(files_dir.iterdir()).name]
 
-    def adequate_fn(_suite: Path, _whitebox: Path) -> list[int]:
-        return [1]
-
-    def run_file(_analyzer: str, _source: Path, _profile_dir: Path) -> ImageCoverage:
-        return _line_coverage(frozenset({"line:1"}), frozenset({"line:1"}))
-
-    experiment = Experiment(
-        id="coverage",
-        type="coverage_with_filter",
-        title="Viewer title",
-        datasets=("ds_one", "ds_two"),
-        tools=("fast-filter",),
-    )
-    run_coverage_with_filter(
-        experiment,
-        root,
-        output_dir=tmp_path / "output",
-        run_file=run_file,
-        reduce_fn=reduce_fn,
-        adequate_fn=adequate_fn,
-    )
-    assert seen[:30] == [dirs[0]] * 30
-    assert seen[30:] == [dirs[1]] * 30
+def _empty_set_measurement(*_args):
+    return None
 
 
 def test_unknown_draw_name_raises_before_the_figure(tmp_path: Path) -> None:
@@ -553,94 +365,11 @@ def test_unknown_draw_name_raises_before_the_figure(tmp_path: Path) -> None:
             root,
             output_dir=tmp_path / "output",
             run_file=run_file,
+            run_set=_empty_set_measurement,
             reduce_fn=reduce_fn,
             adequate_fn=adequate_fn,
         )
     assert not (tmp_path / "output" / "coverage.png").is_file()
-
-
-def test_shared_line_is_counted_once_and_adequate_keeps_one_file(tmp_path: Path) -> None:
-    from experiment_runner.coverage_with_filter import run_coverage_with_filter
-
-    root = tmp_path / "repo"
-    dataset = _write_two_sv_files(root)
-    calls, reduce_fn = _budget_reduce()
-    whiteboxes, suites, adequate_fn = _recording_adequate()
-
-    def run_file(analyzer: str, source: Path, _profile_dir: Path) -> ImageCoverage:
-        if analyzer == "iverilog" and source.name == "first.sv":
-            return ImageCoverage(
-                line_hits=frozenset({"shared:1"}),
-                line_universe=frozenset({"shared:1"}),
-                mcdc_hits=frozenset({"dec:1:0"}),
-                mcdc_universe=frozenset({"dec:1:0"}),
-            )
-        if analyzer == "iverilog":
-            return ImageCoverage(
-                line_hits=frozenset({"shared:1"}),
-                line_universe=frozenset({"shared:1"}),
-                mcdc_hits=frozenset(),
-                mcdc_universe=frozenset({"dec:1:0"}),
-            )
-        if source.name == "first.sv":
-            return ImageCoverage(
-                line_hits=frozenset({"vfirst:1"}),
-                line_universe=frozenset({"vfirst:1"}),
-                mcdc_hits=frozenset(),
-                mcdc_universe=frozenset(),
-            )
-        return ImageCoverage(
-            line_hits=frozenset({"vsecond:1"}),
-            line_universe=frozenset({"vsecond:1", "vextra:1", "vextra:2"}),
-            mcdc_hits=frozenset(),
-            mcdc_universe=frozenset(),
-        )
-
-    output_dir = tmp_path / "output"
-    results = run_coverage_with_filter(
-        _coverage_experiment(),
-        root,
-        output_dir=output_dir,
-        run_file=run_file,
-        reduce_fn=reduce_fn,
-        adequate_fn=adequate_fn,
-    )
-
-    assert [(algo, percent) for _files, algo, percent in calls] == (
-        [("FAST++", 75)] * 10 + [("FAST++", 50)] * 10 + [("FAST++", 25)] * 10
-    )
-    assert {files for files, _algo, _percent in calls} == {dataset}
-    icarus = results["ds_one"]["iverilog"]
-    verilator = results["ds_one"]["verilator"]
-    # Two files hit the same line. Counting each file would make this 200.
-    assert icarus["100"]["line"] == 100.0
-    assert icarus["100"]["mcdc"] == 100.0
-    # The dropped file's line stays in the denominator, so one kept hit is 25.
-    assert verilator["100"]["line"] == 50.0
-    assert [item["line"] for item in verilator["75"]] == [25.0] * 10
-    assert [item["line"] for item in verilator["50"]] == [25.0] * 10
-    assert [item["line"] for item in verilator["25"]] == [25.0] * 10
-    # Id 1 is the first basename. That file is the only MC/DC hit.
-    assert [item["mcdc"] for item in icarus["adequate"]] == [100.0] * 10
-    assert [item["mcdc"] for item in icarus["75"]] == [100.0] * 10
-    for cells in (icarus, verilator):
-        assert cells["100"]["kept"] == 2
-        assert cells["100"]["total"] == 2
-        for category in ("75", "50", "25", "adequate"):
-            assert [item["kept"] for item in cells[category]] == [1] * 10
-            assert [item["total"] for item in cells[category]] == [2] * 10
-    assert len(whiteboxes) == 20
-    assert len(set(whiteboxes)) == 2
-    iverilog_box = next(
-        text for text in whiteboxes if any(token.startswith("M") for token in text.split())
-    )
-    second_tokens = iverilog_box.splitlines()[1].split()
-    assert any(token.startswith("L") for token in second_tokens)
-    assert all(not token.startswith("M") for token in second_tokens)
-    assert suites[whiteboxes.index(iverilog_box)] == "alpha\nbeta\n"
-    png = output_dir / "coverage.png"
-    assert png.is_file()
-    assert png.with_suffix(".svg").is_file()
 
 
 def test_missing_profile_adds_no_hits_and_writes_the_figure(tmp_path: Path) -> None:
@@ -674,13 +403,12 @@ def test_missing_profile_adds_no_hits_and_writes_the_figure(tmp_path: Path) -> N
         root,
         output_dir=output_dir,
         run_file=run_file,
+        run_set=_empty_set_measurement,
         reduce_fn=reduce_fn,
         adequate_fn=adequate_fn,
     )
 
-    # dormant stays in the universe and is not a hit from the missing file.
-    assert results["ds_one"]["iverilog"]["100"]["line"] == 50.0
-    assert results["ds_one"]["iverilog"]["100"]["total"] == 2
+    assert results["adequacy"]["iverilog"]["line"] == [1] * 10
     iverilog_box = next(text for text in whiteboxes if "only-a" in text)
     assert iverilog_box.splitlines()[1].split() == []
     png = output_dir / "coverage.png"
@@ -705,13 +433,14 @@ def test_all_missing_profiles_score_zero_and_write_the_figure(tmp_path: Path) ->
         root,
         output_dir=output_dir,
         run_file=run_file,
+        run_set=_empty_set_measurement,
         reduce_fn=reduce_fn,
         adequate_fn=adequate_fn,
     )
 
     for analyzer in ("iverilog", "verilator"):
-        assert results["ds_one"][analyzer]["100"]["line"] == 0.0
-        assert results["ds_one"][analyzer]["100"]["mcdc"] == 0.0
+        assert results["budgets"][analyzer]["100"] == [{"line": 0.0, "mcdc": 0.0}] * 10
+        assert results["adequacy"][analyzer]["joint"] == [0] * 10
     png = output_dir / "coverage.png"
     assert png.is_file()
     assert png.with_suffix(".svg").is_file()
@@ -958,6 +687,7 @@ def test_image_that_never_exports_raises_before_the_figure(tmp_path: Path) -> No
             root,
             output_dir=output_dir,
             run_file=run_file,
+            run_set=_empty_set_measurement,
             reduce_fn=reduce_fn,
             adequate_fn=adequate_fn,
         )
@@ -991,10 +721,12 @@ def test_returned_image_map_scores_the_file_that_exported(tmp_path: Path) -> Non
         root,
         output_dir=output_dir,
         run_file=run_file,
+        run_set=_empty_set_measurement,
         reduce_fn=reduce_fn,
         adequate_fn=adequate_fn,
     )
-    assert results["ds_one"]["iverilog"]["100"]["line"] == 50.0
+    assert results["adequacy"]["iverilog"]["line"] == [1] * 10
+    assert any(rows.splitlines() == ["La:1", ""] for rows in _whiteboxes)
     assert (output_dir / "coverage.png").is_file()
 
 
@@ -1012,3 +744,83 @@ def test_compiler_env_builds_icarus_host_tools_with_clang(monkeypatch) -> None:
         assert "-fprofile-instr-generate" in env[name]
         assert "-fcoverage-mapping" in env[name]
         assert "-fcoverage-mcdc" in env[name]
+
+
+def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
+    from experiment_runner import coverage_with_filter as module
+
+    images = {stem: tmp_path / stem for stem in ("ivlpp", "ivl")}
+    monkeypatch.setattr(module, "ensure_analyzers", lambda: (tmp_path / "iverilog", tmp_path / "verilator"))
+    monkeypatch.setattr(module, "_find_installed", lambda _prefix, stem: images[stem])
+    monkeypatch.setattr(module, "_image_signature", lambda image: image.name)
+    launched = []
+
+    def launch(command, directory):
+        launched.append(Path(command[-1]).name)
+        for stem in images:
+            (directory / f"{stem}.profraw").touch()
+
+    def timed(fn, args, **kwargs):
+        result = fn(*args)
+        return None if args[1].name == "timeout.sv" else result
+
+    exports = []
+    coverage = ImageCoverage(frozenset({"l"}), frozenset({"l"}), frozenset({"m"}), frozenset({"m"}))
+
+    def export(image, raws):
+        exports.append((image.name, raws))
+        return coverage
+
+    monkeypatch.setattr(module, "_run_analyzer", launch)
+    monkeypatch.setattr(module, "call_timed", timed)
+    monkeypatch.setattr(module, "_export_merged", export)
+    (tmp_path / "ivl.profraw").touch()
+    assert module.default_run_set(
+        "iverilog", [Path(name) for name in ("a.sv", "timeout.sv", "b.sv")], tmp_path, 120
+    ) == coverage
+    assert launched == ["a.sv", "timeout.sv", "b.sv"]
+    assert [stem for stem, _ in exports] == ["ivlpp", "ivl"]
+    for stem, raws in exports:
+        assert [raw.name for raw in raws] == [f"{stem}.profraw"] * 2
+        assert len({raw.parent for raw in raws}) == 2
+        assert all(raw.parent != tmp_path for raw in raws)
+    assert module.default_run_set("iverilog", [], tmp_path, 120) == module._NO_HITS
+    assert len(exports) == 2
+
+
+def test_adequacy_counts_use_goal_and_tool_specific_hits(tmp_path):
+    from experiment_runner import coverage_with_filter as module
+
+    paths = sorted(_write_two_sv_files(tmp_path).glob("*.sv"))
+    hits = frozenset({"shared"})
+    empty = frozenset()
+    line = _line_coverage(hits, hits)
+    mcdc = ImageCoverage(empty, empty, hits, hits)
+    observed = {}
+
+    def select(suite, whitebox):
+        assert suite.read_text().splitlines() == ["alpha", "beta"]
+        rows = [set(row.split()) for row in whitebox.read_text().splitlines()]
+        observed.setdefault((whitebox.parent.parent.name, whitebox.parent.name), []).append(rows)
+        return [idx for idx, row in enumerate(rows, 1) if row]
+
+    counts = module._adequate_counts(
+        paths, {"verilator": [line, mcdc], "iverilog": [mcdc, line]}, select, tmp_path / "work"
+    )
+    assert counts == {
+        "verilator": {"line": [1] * 10, "mcdc": [1] * 10, "joint": [2] * 10},
+        "iverilog": {"line": [1] * 10, "mcdc": [1] * 10, "joint": [2] * 10},
+        "both": {"line": [2] * 10, "mcdc": [2] * 10, "joint": [2] * 10},
+    }
+    assert observed["both", "line"] == [[{"Lverilator:shared"}, {"Liverilog:shared"}]] * 10
+    assert observed["both", "mcdc"] == [[{"Miverilog:shared"}, {"Mverilator:shared"}]] * 10
+    assert observed["both", "joint"] == [
+        [{"Lverilator:shared", "Miverilog:shared"}, {"Liverilog:shared", "Mverilator:shared"}]
+    ] * 10
+
+    observed.clear()
+    counts = module._adequate_counts(
+        paths, {"verilator": [mcdc, mcdc], "iverilog": [mcdc, line]}, select, tmp_path / "work"
+    )
+    assert counts["verilator"]["line"] == [0] * 10
+    assert ("verilator", "line") not in observed

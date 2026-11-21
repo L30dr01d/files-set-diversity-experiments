@@ -21,9 +21,9 @@ Experiment types:
 - `score_for_fastr` — FAST++ / FAST-CS budget lines.
 - `score_for_random_filter` — leftover-% boxes; `tools[0]` filters, every tool is plotted.
 - `score_for_panhard_dpi` and `score_for_panhard_rni` — file-count plots using the selected ranking. A shaded band extends one residual on either side of the Panhard measure, and a dashed line marks where filtering would normally stop.
-- `coverage_with_filter` — line and MC/DC of instrumented `verilator` and `iverilog`, one row of panels per analyzer (Verilator, then Icarus), at 100/75/50/25 percent and one adequate subset labeled with files kept and percent of the dataset.
+- `coverage_with_filter` — one dataset with ten fresh line and MC/DC measurements per budget (100%, 75%, 50%, 25%). The figure shows coverage by budget and files kept for line, MC/DC, and joint adequacy. Verilator and Icarus each have a row, followed by a row of adequacy results for a shared suite that preserves coverage in both tools.
 
-All types except `score_per_measure` and `coverage_with_filter` use the same color for each measure: `panhard-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red. `coverage_with_filter` uses one color per analyzer, Icarus `C0` and Verilator `C1`, and that color is the same on every panel of the analyzer's row.
+All types except `score_per_measure` and `coverage_with_filter` use the same color for each measure: `panhard-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red. `coverage_with_filter` uses Icarus `C0`, Verilator `C1`, and `C2` for the shared-suite row.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
 Each run writes `output/<id>.png` and `output/<id>.svg` from the same plot.

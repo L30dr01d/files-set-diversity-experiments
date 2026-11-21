@@ -489,12 +489,44 @@
       ]
     },
     {
-      "id": "22_coverage_wih_filter",
+      "id": "22_coverage_wih_filter_random_sv",
       "type": "coverage_with_filter",
       "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
       "datasets": [
-        "001_random_sv_50",
+        "001_random_sv_50"
+      ],
+      "tools": [
+        "fast-filter"
+      ]
+    },
+    {
+      "id": "23_coverage_wih_filter_duplicates",
+      "type": "coverage_with_filter",
+      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "datasets": [
         "018_duplicates_001_sv_100"
+      ],
+      "tools": [
+        "fast-filter"
+      ]
+    },
+    {
+      "id": "24_coverage_wih_filter_otk",
+      "type": "coverage_with_filter",
+      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "datasets": [
+        "014_random_otk_150"
+      ],
+      "tools": [
+        "fast-filter"
+      ]
+    },
+    {
+      "id": "25_coverage_wih_filter_sv_tests",
+      "type": "coverage_with_filter",
+      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "datasets": [
+        "072_sv-tests_1028"
       ],
       "tools": [
         "fast-filter"

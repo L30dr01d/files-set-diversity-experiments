@@ -8,16 +8,15 @@ import sys
 import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from experiment_runner.analyzer_coverage import (
     ImageCoverage,
-    adequate_axis_label,
     combine_images,
     hits_from_llvm_export,
     iverilog_command,
     profile_env,
-    subset_percents,
     verilator_command,
     whitebox_line,
 )
@@ -27,71 +26,68 @@ from experiment_runner.timeout import call_timed
 from fast_filter.suite import list_test_files, write_suite_file
 
 DESIGN_TIMEOUT_SECONDS = 120
-CATEGORIES = ("100", "75", "50", "25", "adequate")
-BUDGET_PERCENTS = (75, 50, 25)
+BUDGET_PERCENTS = (100, 75, 50, 25)
 FILTER_DRAWS = 10
 RunFile = Callable[
     [str, Path, Path], ImageCoverage | dict[str, ImageCoverage | None] | None
 ]
+RunSet = Callable[[str, Sequence[Path], Path, float], ImageCoverage | None]
 ReduceFn = Callable[[Path, str, float], list[str]]
 AdequateFn = Callable[[Path, Path], list[int]]
 ANALYZERS = (
     ("iverilog", "Icarus", "C0"),
     ("verilator", "Verilator", "C1"),
 )
-PLOT_ROWS = (
-    ("verilator", "Verilator", "C1"),
-    ("iverilog", "Icarus", "C0"),
+PLOT_ROWS = (*reversed(ANALYZERS), ("both", "Both tools", "C2"))
+COLUMNS = (
+    ("line", "Line coverage", False),
+    ("line", "Line adequacy", True),
+    ("mcdc", "MC/DC coverage", False),
+    ("mcdc", "MC/DC adequacy", True),
+    ("joint", "Line and MC/DC adequacy", True),
 )
-COLUMNS = (("line", "Line coverage"), ("mcdc", "MC/DC"))
 
 
 def plot_coverage_bars(results: dict, experiment: Experiment):
     import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
 
-    datasets = list(experiment.datasets)
-    column_count = len(datasets) * len(COLUMNS)
     fig, axes = plt.subplots(
-        len(PLOT_ROWS),
-        column_count,
-        figsize=(6 * column_count, 5 * len(PLOT_ROWS)),
-        squeeze=False,
-        constrained_layout=True,
+        len(PLOT_ROWS), len(COLUMNS), figsize=(18, 10), constrained_layout=True
     )
     fig.suptitle(experiment.title)
-    positions = list(range(len(CATEGORIES)))
-    for row, (analyzer, series, color) in enumerate(PLOT_ROWS):
-        for dataset_index, dataset in enumerate(datasets):
-            cells = results[dataset][analyzer]
-            for column_index, (field, title) in enumerate(COLUMNS):
-                col = dataset_index * len(COLUMNS) + column_index
-                ax = axes[row][col]
-                full = float(cells["100"][field])
-                peak = full
-                ax.bar([0], [full], width=0.6, color=color)
-                for index, category in enumerate(CATEGORIES[1:], start=1):
-                    samples = [float(item[field]) for item in cells[category]]
-                    peak = max(peak, *samples)
-                    plotted = ax.boxplot(
-                        [samples],
-                        positions=[index],
-                        widths=0.6,
-                        whis=1.5,
-                        showfliers=True,
-                        patch_artist=True,
-                        manage_ticks=False,
-                        medianprops={"color": "black"},
-                    )
-                    for box in plotted["boxes"]:
-                        box.set_facecolor(color)
-                ax.set_title(f"{dataset}\n{title}")
-                ax.set_ylabel(f"{series}\n%" if col == 0 else "%")
-                tick_labels = [f"{category}%" for category in CATEGORIES[:-1]]
-                tick_labels.append(adequate_axis_label(cells["adequate"]))
-                ax.set_xticks(positions, tick_labels)
-                ax.set_xlim(-0.5, len(CATEGORIES) - 0.5)
-                ax.set_ylim(0, max(peak * 1.25, 1))
-                ax.grid(axis="y", alpha=0.3)
+    max_kept = max(max(draws) for goals in results["adequacy"].values() for draws in goals.values())
+    for row, (tool, label, color) in enumerate(PLOT_ROWS):
+        for col, (metric, title, adequate) in enumerate(COLUMNS):
+            ax = axes[row, col]
+            if tool == "both" and not adequate:
+                ax.set_visible(False)
+                continue
+            if adequate:
+                samples = [results["adequacy"][tool][metric]]
+                ax.set_xticks([])
+                ax.set_ylim(-0.5, max_kept + 0.5)
+                ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+                ax.set_ylabel(f"{label}\nFiles kept" if tool == "both" and col == 1 else "Files kept")
+            else:
+                samples = [
+                    [draw[metric] for draw in results["budgets"][tool][str(percent)]]
+                    for percent in BUDGET_PERCENTS
+                ]
+                ax.set_xticks(range(1, len(BUDGET_PERCENTS) + 1), [f"{p}%" for p in BUDGET_PERCENTS])
+                ax.set_ylim(-2, 102)
+                ax.set_ylabel(f"{label}\nCoverage (%)" if col == 0 else "Coverage (%)")
+            ax.boxplot(
+                samples,
+                widths=0.6,
+                patch_artist=True,
+                manage_ticks=False,
+                boxprops={"facecolor": color},
+                medianprops={"color": "black"},
+            )
+            if row == 0:
+                ax.set_title(title)
+            ax.grid(axis="y", alpha=0.3)
     return fig
 
 
@@ -190,25 +186,6 @@ def _stored_profiles(
     return _coverages_from_runs(recorded)
 
 
-def _scores(
-    files: Sequence[ImageCoverage],
-    universe: ImageCoverage,
-    kept: int,
-    total: int,
-) -> dict:
-    line, mcdc = subset_percents(files, universe)
-    return {"line": line, "mcdc": mcdc, "kept": kept, "total": total}
-
-
-def _coverages_named(
-    names: Sequence[str], by_name: dict[str, ImageCoverage]
-) -> list[ImageCoverage]:
-    missing = [name for name in names if name not in by_name]
-    if missing:
-        raise ValueError(f"unknown kept basename: {missing[0]}")
-    return [by_name[name] for name in names]
-
-
 def _select_adequate(
     paths: Sequence[Path],
     coverages: Sequence[ImageCoverage],
@@ -231,6 +208,45 @@ def _select_adequate(
             raise ValueError(f"selection id {tc_id} out of range")
         selected.append(names[index])
     return selected
+
+
+def _adequate_counts(
+    paths: Sequence[Path],
+    stored: Mapping[str, Sequence[ImageCoverage]],
+    adequate_fn: AdequateFn,
+    work: Path,
+) -> dict[str, dict[str, list[int]]]:
+    both = [
+        replace(
+            _NO_HITS,
+            line_hits=frozenset(
+                f"{tool}:{hit}"
+                for tool, coverage in zip(stored, per_file)
+                for hit in coverage.line_hits
+            ),
+            mcdc_hits=frozenset(
+                f"{tool}:{hit}"
+                for tool, coverage in zip(stored, per_file)
+                for hit in coverage.mcdc_hits
+            ),
+        )
+        for per_file in zip(*stored.values())
+    ]
+    counts: dict[str, dict[str, list[int]]] = {}
+    for tool, coverages in {**stored, "both": both}.items():
+        goals = {
+            "line": [replace(coverage, mcdc_hits=frozenset()) for coverage in coverages],
+            "mcdc": [replace(coverage, line_hits=frozenset()) for coverage in coverages],
+            "joint": coverages,
+        }
+        counts[tool] = {
+            goal: [
+                len(_select_adequate(paths, inputs, adequate_fn, work / tool / goal))
+                for _ in range(FILTER_DRAWS)
+            ] if any(item.line_hits or item.mcdc_hits for item in inputs) else [0] * FILTER_DRAWS
+            for goal, inputs in goals.items()
+        }
+    return counts
 
 
 _COVERAGE_FLAGS = "-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc"
@@ -484,7 +500,15 @@ def _coverage_from_profiles(
     images: dict[str, Path],
     signatures: Mapping[str, str],
 ) -> dict[str, ImageCoverage | None] | None:
-    profraws = sorted(profile_dir.glob("*.profraw"))
+    return _coverage_from_raws(sorted(profile_dir.glob("*.profraw")), stems, images, signatures)
+
+
+def _coverage_from_raws(
+    profraws: Sequence[Path],
+    stems: tuple[str, ...],
+    images: dict[str, Path],
+    signatures: Mapping[str, str],
+) -> dict[str, ImageCoverage | None] | None:
     if not profraws:
         return None
     assigned = assign_profraws(profraws, signatures)
@@ -502,9 +526,7 @@ def _coverage_from_profiles(
     return exports
 
 
-def default_run_file(
-    analyzer: str, source: Path, profile_dir: Path
-) -> dict[str, ImageCoverage | None] | None:
+def _analyzer_images(analyzer: str) -> tuple[Path, dict[str, Path], dict[str, str]]:
     iverilog, verilator = ensure_analyzers()
     stems = _IMAGE_STEMS.get(analyzer)
     if stems is None:
@@ -521,14 +543,55 @@ def default_run_file(
         signature = _image_signature(image)
         if signature is not None:
             signatures[signature] = stem
+    return iverilog if analyzer == "iverilog" else verilator, images, signatures
+
+
+def _profile_source(analyzer: str, source: Path, profile_dir: Path, executable: Path) -> bool:
     with tempfile.TemporaryDirectory() as scratch_name:
         scratch = Path(scratch_name)
         if analyzer == "iverilog":
-            command = iverilog_command(iverilog, source, scratch / "a.out")
+            command = iverilog_command(executable, source, scratch / "a.out")
         else:
-            command = verilator_command(verilator, source, scratch / "mdir")
+            command = verilator_command(executable, source, scratch / "mdir")
         _run_analyzer(command, profile_dir)
-    return _coverage_from_profiles(profile_dir, stems, images, signatures)
+    return True
+
+
+def default_run_file(
+    analyzer: str, source: Path, profile_dir: Path
+) -> dict[str, ImageCoverage | None] | None:
+    executable, images, signatures = _analyzer_images(analyzer)
+    _profile_source(analyzer, source, profile_dir, executable)
+    return _coverage_from_profiles(profile_dir, tuple(images), images, signatures)
+
+
+def default_run_set(
+    analyzer: str, sources: Sequence[Path], profile_dir: Path, timeout: float
+) -> ImageCoverage:
+    if not sources:
+        return _NO_HITS
+    executable, images, signatures = _analyzer_images(analyzer)
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=profile_dir) as draw:
+        profraws: list[Path] = []
+        for index, source in enumerate(sources):
+            raw_dir = Path(draw) / str(index)
+            raw_dir.mkdir()
+            print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
+            started = time.monotonic()
+            completed = call_timed(
+                _profile_source, (analyzer, source, raw_dir, executable),
+                timeout=timeout, memory_bytes=None,
+            )
+            if completed:
+                profraws.extend(sorted(raw_dir.glob("*.profraw")))
+            elif time.monotonic() - started >= timeout:
+                print(
+                    f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
+                    file=sys.stderr, flush=True,
+                )
+        exports = _coverage_from_raws(profraws, tuple(images), images, signatures) or {}
+        return combine_images([coverage for coverage in exports.values() if coverage is not None])
 
 
 def _write_figure(results: dict, experiment: Experiment, output_dir: Path) -> None:
@@ -557,70 +620,74 @@ def run_coverage_with_filter(
     *,
     output_dir: Path,
     run_file: RunFile = default_run_file,
+    run_set: RunSet = default_run_set,
     reduce_fn: ReduceFn | None = None,
     adequate_fn: AdequateFn | None = None,
     timeout: float = DESIGN_TIMEOUT_SECONDS,
 ) -> dict:
+    if len(experiment.datasets) != 1:
+        raise ValueError("coverage_with_filter requires exactly one dataset")
     if reduce_fn is None:
         reduce_fn = _default_reduce
     if adequate_fn is None:
         adequate_fn = _default_adequate
-    # call_timed turns a failed run_file into an empty cell and the figure
-    # is still written. A missing llvm tool or a failed build must abort first.
-    if run_file is default_run_file:
+    if run_file is default_run_file or run_set is default_run_set:
         ensure_analyzers()
-    results: dict = {}
-    for dataset_name in experiment.datasets:
-        files_dir = dataset_dir(root, dataset_name)
-        paths = list_test_files(files_dir)
-        total = len(paths)
-        stored = {
-            analyzer: _stored_profiles(
-                analyzer,
-                paths,
-                run_file,
-                output_dir / "profiles" / dataset_name,
-                timeout,
-            )
-            for analyzer, _series, _color in ANALYZERS
+
+    dataset_name = experiment.datasets[0]
+    files_dir = dataset_dir(root, dataset_name)
+    paths = list_test_files(files_dir)
+    paths_by_name = {path.name: path for path in paths}
+    profile_root = output_dir / "profiles" / dataset_name
+    measured: dict[str, dict[str, list[dict[str, int]]]] = {
+        tool: {} for tool, _, _ in ANALYZERS
+    }
+    universes: dict[str, dict[str, set[str]]] = {
+        tool: {"line": set(), "mcdc": set()} for tool in measured
+    }
+    for percent in BUDGET_PERCENTS:
+        category = str(percent)
+        for samples in measured.values():
+            samples[category] = []
+        for draw in range(FILTER_DRAWS):
+            selected = paths
+            if percent != 100:
+                names = reduce_fn(files_dir, "FAST++", percent)
+                try:
+                    selected = [paths_by_name[name] for name in names]
+                except KeyError as exc:
+                    raise ValueError(f"unknown kept basename: {exc.args[0]}") from exc
+            for tool, samples in measured.items():
+                draw_dir = profile_root / "budgets" / str(percent) / str(draw) / tool
+                coverage = run_set(tool, selected, draw_dir, timeout) or _NO_HITS
+                universes[tool]["line"].update(coverage.line_universe)
+                universes[tool]["mcdc"].update(coverage.mcdc_universe)
+                samples[category].append({
+                    "line": len(coverage.line_hits),
+                    "mcdc": len(coverage.mcdc_hits),
+                })
+
+    budgets: dict[str, dict[str, list[dict[str, float]]]] = {}
+    for tool, categories in measured.items():
+        totals = {metric: len(points) for metric, points in universes[tool].items()}
+        budgets[tool] = {
+            category: [
+                {
+                    metric: 100 * hits / totals[metric] if totals[metric] else 0.0
+                    for metric, hits in sample.items()
+                }
+                for sample in samples
+            ]
+            for category, samples in categories.items()
         }
-        budgets = {
-            str(percent): [
-                list(reduce_fn(files_dir, "FAST++", percent)) for _draw in range(FILTER_DRAWS)
-            ]
-            for percent in BUDGET_PERCENTS
-        }
-        dataset_results: dict = {}
-        for analyzer, _series, _color in ANALYZERS:
-            coverages = stored[analyzer]
-            universe = combine_images(coverages)
-            by_name = {path.name: coverage for path, coverage in zip(paths, coverages)}
-            adequate_work = output_dir / "adequate" / dataset_name / analyzer
-            adequate_draws = [
-                _select_adequate(paths, coverages, adequate_fn, adequate_work)
-                for _draw in range(FILTER_DRAWS)
-            ]
-            cells = {"100": _scores(coverages, universe, total, total)}
-            for percent in BUDGET_PERCENTS:
-                cells[str(percent)] = [
-                    _scores(
-                        _coverages_named(names, by_name),
-                        universe,
-                        len(names),
-                        total,
-                    )
-                    for names in budgets[str(percent)]
-                ]
-            cells["adequate"] = [
-                _scores(
-                    _coverages_named(names, by_name),
-                    universe,
-                    len(names),
-                    total,
-                )
-                for names in adequate_draws
-            ]
-            dataset_results[analyzer] = cells
-        results[dataset_name] = dataset_results
+
+    stored = {
+        tool: _stored_profiles(tool, paths, run_file, profile_root, timeout)
+        for tool in budgets
+    }
+    counts = _adequate_counts(
+        paths, stored, adequate_fn, output_dir / "adequate" / dataset_name
+    )
+    results = {"budgets": budgets, "adequacy": counts}
     _write_figure(results, experiment, output_dir)
     return results

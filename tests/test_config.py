@@ -38,7 +38,7 @@ def test_coverage_with_filter_experiment_is_configured():
     matches = [exp for exp in loaded if exp.id == "22_coverage_wih_filter"]
     assert len(matches) == 1
     assert matches[0].type == "coverage_with_filter"
-    assert matches[0].datasets == ("001_random_sv_50", "018_duplicates_001_sv_100")
+    assert matches[0].datasets == ("001_random_sv_50",)
     assert matches[0].tools == ("fast-filter",)
 
 
