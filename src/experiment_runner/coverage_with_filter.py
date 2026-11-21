@@ -9,6 +9,7 @@ import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
+from math import ceil, floor
 from pathlib import Path
 
 from experiment_runner.analyzer_coverage import (
@@ -48,7 +49,7 @@ COLUMNS = (
 )
 
 
-def plot_coverage_bars(results: dict, experiment: Experiment):
+def plot_coverage_bars(results: dict, experiment: Experiment, dataset_size: int):
     import matplotlib.pyplot as plt
     from matplotlib.ticker import MaxNLocator
 
@@ -56,7 +57,8 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
         len(PLOT_ROWS), len(COLUMNS), figsize=(18, 10), constrained_layout=True
     )
     fig.suptitle(experiment.title)
-    max_kept = max(max(draws) for goals in results["adequacy"].values() for draws in goals.values())
+    coverage_panels = []
+    files_kept_panels = []
     for row, (tool, label, color) in enumerate(PLOT_ROWS):
         for col, (metric, title, adequate) in enumerate(COLUMNS):
             ax = axes[row, col]
@@ -64,18 +66,21 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
                 ax.set_visible(False)
                 continue
             if adequate:
-                samples = [results["adequacy"][tool][metric]]
+                samples = [[
+                    100 * count / dataset_size if dataset_size else 0.0
+                    for count in results["adequacy"][tool][metric]
+                ]]
+                files_kept_panels.append((ax, samples))
                 ax.set_xticks([])
-                ax.set_ylim(-0.5, max_kept + 0.5)
-                ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-                ax.set_ylabel(f"{label}\nFiles kept" if tool == "both" and col == 1 else "Files kept")
+                ylabel = "Files kept (%)"
+                ax.set_ylabel(f"{label}\n{ylabel}" if tool == "both" and col == 1 else ylabel)
             else:
                 samples = [
                     [draw[metric] for draw in results["budgets"][tool][str(percent)]]
                     for percent in BUDGET_PERCENTS
                 ]
+                coverage_panels.append((ax, samples))
                 ax.set_xticks(range(1, len(BUDGET_PERCENTS) + 1), [f"{p}%" for p in BUDGET_PERCENTS])
-                ax.set_ylim(-2, 102)
                 ax.set_ylabel(f"{label}\nCoverage (%)" if col == 0 else "Coverage (%)")
             ax.boxplot(
                 samples,
@@ -88,6 +93,14 @@ def plot_coverage_bars(results: dict, experiment: Experiment):
             if row == 0:
                 ax.set_title(title)
             ax.grid(axis="y", alpha=0.3)
+    for panels in (coverage_panels, files_kept_panels):
+        values = [value for _, samples in panels for draws in samples for value in draws]
+        low, high = min(values), max(values)
+        padding = max(0.5, 0.05 * (high - low))
+        limits = floor(low - padding), ceil(high + padding)
+        for ax, _ in panels:
+            ax.set_ylim(*limits)
+            ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     return fig
 
 
@@ -594,13 +607,15 @@ def default_run_set(
         return combine_images([coverage for coverage in exports.values() if coverage is not None])
 
 
-def _write_figure(results: dict, experiment: Experiment, output_dir: Path) -> None:
+def _write_figure(
+    results: dict, experiment: Experiment, output_dir: Path, dataset_size: int
+) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig = plot_coverage_bars(results, experiment)
+    fig = plot_coverage_bars(results, experiment, dataset_size)
     output_dir.mkdir(parents=True, exist_ok=True)
     png = output_dir / f"{experiment.id}.png"
     try:
@@ -689,5 +704,5 @@ def run_coverage_with_filter(
         paths, stored, adequate_fn, output_dir / "adequate" / dataset_name
     )
     results = {"budgets": budgets, "adequacy": counts}
-    _write_figure(results, experiment, output_dir)
+    _write_figure(results, experiment, output_dir, len(paths))
     return results

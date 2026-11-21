@@ -317,12 +317,39 @@ def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, mon
     assert [len(samples) for _, samples in plotted] == [4, 1, 4, 1, 1] * 2 + [1, 1, 1]
     assert all(len(draws) == 10 for _, samples in plotted for draws in samples)
     assert [tick.get_text() for tick in axes[0].get_xticklabels()] == ["100%", "75%", "50%", "25%"]
-    assert axes[1].get_ylabel() == "Files kept"
-    for axis, count in ((axes[1], 1), (axes[3], 0), (axes[14], 1)):
-        bottom, top = axis.get_ylim()
-        assert bottom < count < top
+    assert axes[1].get_ylabel() == "Files kept (%)"
+    assert {axes[i].get_ylim() for i in (0, 2, 5, 7)} == {(-5, 105)}
+    assert {axes[i].get_ylim() for i in (1, 3, 4, 6, 8, 9, 11, 13, 14)} == {(-3, 53)}
+    assert plotted[1][1] == [[50.0] * 10]
+    assert plotted[3][1] == [[0.0] * 10]
     assert (output / "coverage.png").is_file()
     assert (output / "coverage.svg").is_file()
+
+
+def test_plot_zooms_in_on_narrow_and_constant_samples():
+    import matplotlib.pyplot as plt
+
+    from experiment_runner.coverage_with_filter import (
+        BUDGET_PERCENTS,
+        plot_coverage_bars,
+    )
+
+    results = {
+        "budgets": {
+            tool: {str(p): [{"line": 83.2, "mcdc": 86.1}] for p in BUDGET_PERCENTS}
+            for tool in ("verilator", "iverilog")
+        },
+        "adequacy": {
+            tool: {"line": [1], "mcdc": [1], "joint": [1]}
+            for tool in ("verilator", "iverilog", "both")
+        },
+    }
+    figure = plot_coverage_bars(results, _coverage_experiment(), dataset_size=4)
+    try:
+        assert figure.axes[0].get_ylim() == (82, 87)
+        assert figure.axes[1].get_ylim() == (24, 26)
+    finally:
+        plt.close(figure)
 
 
 def test_experiment_requires_one_dataset(tmp_path):
