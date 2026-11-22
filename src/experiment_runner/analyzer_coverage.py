@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class ImageCoverage:
-    line_hits: frozenset[str]
-    line_universe: frozenset[str]
-    mcdc_hits: frozenset[str]
-    mcdc_universe: frozenset[str]
+    line_hits: Set[str]
+    line_universe: Set[str]
+    mcdc_hits: Set[str]
+    mcdc_universe: Set[str]
 
 
-def _union(*groups: frozenset[str]) -> frozenset[str]:
+def _union(*groups: Set[str]) -> frozenset[str]:
     return frozenset().union(*groups)
 
 

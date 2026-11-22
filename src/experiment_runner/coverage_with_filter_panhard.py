@@ -144,7 +144,6 @@ def plot_panhard_coverage(results: dict, experiment: Experiment) -> Figure:
                     [step["coverage"][tool][metric] for step in steps],
                     width=width, label=label, color=color,
                 )
-            axis.set_ylim(0, 100)
         for axis in (diversity, line, mcdc):
             axis.axvline(
                 payload["stop_count"], color="black", linestyle="--", label="Panhard stop"

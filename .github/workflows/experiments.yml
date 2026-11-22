@@ -83,7 +83,7 @@ jobs:
   site:
     name: Build gallery
     needs: [matrix, experiment]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.matrix.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -121,7 +121,7 @@ jobs:
   deploy:
     name: Publish gallery
     needs: site
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.site.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import sys
 import time
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set
+from dataclasses import dataclass
 from math import ceil, floor
 from pathlib import Path
 
-from experiment_runner.analyzer_coverage import ImageCoverage, combine_images, whitebox_line
+from experiment_runner.analyzer_coverage import ImageCoverage, combine_images
 from experiment_runner.config import Experiment
 from experiment_runner.instrumented_analyzers import (
     ANALYZERS,
@@ -45,8 +45,8 @@ def plot_coverage_bars(results: dict, experiment: Experiment, dataset_size: int)
         len(PLOT_ROWS), len(COLUMNS), figsize=(18, 10), constrained_layout=True
     )
     fig.suptitle(f"{experiment.title} ({experiment.datasets[0]})")
-    coverage_panels = []
     files_kept_panels = []
+    scale_groups = [files_kept_panels]
     for row, (tool, label, color) in enumerate(PLOT_ROWS):
         for col, (metric, title, adequate) in enumerate(COLUMNS):
             ax = axes[row, col]
@@ -67,7 +67,7 @@ def plot_coverage_bars(results: dict, experiment: Experiment, dataset_size: int)
                     [draw[metric] for draw in results["budgets"][tool][str(percent)]]
                     for percent in BUDGET_PERCENTS
                 ]
-                coverage_panels.append((ax, samples))
+                scale_groups.append([(ax, samples)])
                 ax.set_xticks(range(1, len(BUDGET_PERCENTS) + 1), [f"{p}%" for p in BUDGET_PERCENTS])
                 ax.set_ylabel(f"{label}\nCoverage (%)" if col == 0 else "Coverage (%)")
             ax.boxplot(
@@ -81,7 +81,7 @@ def plot_coverage_bars(results: dict, experiment: Experiment, dataset_size: int)
             if row == 0:
                 ax.set_title(title)
             ax.grid(axis="y", alpha=0.3)
-    for panels in (coverage_panels, files_kept_panels):
+    for panels in scale_groups:
         values = [value for _, samples in panels for draws in samples for value in draws]
         low, high = min(values), max(values)
         padding = max(0.5, 0.05 * (high - low))
@@ -121,35 +121,78 @@ def _empty_coverage(donor: ImageCoverage | None) -> ImageCoverage:
     )
 
 
-def _coverages_from_runs(recorded: Sequence[object]) -> list[ImageCoverage]:
-    # call_timed starts a fresh process, so image universes travel back in the
-    # return value. A dict is one image's export; ImageCoverage is an injected run.
-    if not any(isinstance(item, dict) for item in recorded):
-        donor = next((item for item in recorded if isinstance(item, ImageCoverage)), None)
-        return [
-            item if isinstance(item, ImageCoverage) else _empty_coverage(donor) for item in recorded
-        ]
+@dataclass(eq=False, frozen=True)
+class _PackedHits(Set[str]):
+    bits: int
+    positions: dict[str, int]
+    names: list[str]
+
+    @classmethod
+    def _from_iterable(cls, values: Iterable[str]) -> frozenset[str]:
+        return frozenset(values)
+
+    def __len__(self) -> int:
+        return self.bits.bit_count()
+
+    def __contains__(self, name: object) -> bool:
+        position = self.positions.get(name) if isinstance(name, str) else None
+        return position is not None and bool(self.bits & (1 << position))
+
+    def __iter__(self) -> Iterator[str]:
+        raw = self.bits.to_bytes((self.bits.bit_length() + 7) // 8, "little")
+        for offset, byte in enumerate(raw):
+            while byte:
+                bit = byte & -byte
+                yield self.names[8 * offset + bit.bit_length() - 1]
+                byte ^= bit
+
+
+class _CoverageIndex:
+    def __init__(self) -> None:
+        self.positions: dict[str, int] = {}
+        self.names: list[str] = []
+        self.universes: dict[frozenset[str], frozenset[str]] = {}
+
+    def pack(self, hits: Set[str], universe: Set[str]) -> tuple[_PackedHits, frozenset[str]]:
+        shared = frozenset(universe)
+        shared = self.universes.setdefault(shared, shared)
+        raw = bytearray()
+        for name in hits:
+            position = self.positions.setdefault(name, len(self.names))
+            if position == len(self.names):
+                self.names.append(name)
+            byte, bit = divmod(position, 8)
+            if byte >= len(raw):
+                raw.extend(bytes(byte + 1 - len(raw)))
+            raw[byte] |= 1 << bit
+        return _PackedHits(int.from_bytes(raw, "little"), self.positions, self.names), shared
+
+
+def _coverages_from_runs(recorded: Iterable[object]) -> list[ImageCoverage]:
+    lines, conditions = _CoverageIndex(), _CoverageIndex()
     remembered: dict[str, ImageCoverage] = {}
+    stems: set[str] = set()
     combined: list[ImageCoverage | None] = []
-    stems: list[str] = []
     for item in recorded:
-        if not isinstance(item, dict):
+        if isinstance(item, dict):
+            parts = []
+            for stem, coverage in item.items():
+                stems.add(stem)
+                previous = remembered.get(stem, NO_HITS)
+                if isinstance(coverage, ImageCoverage):
+                    remembered[stem] = combine_images([previous, _empty_coverage(coverage)])
+                    parts.append(coverage)
+                else:
+                    parts.append(previous)
+            item = parts[0] if len(parts) == 1 else combine_images(parts)
+        if isinstance(item, ImageCoverage):
+            combined.append(ImageCoverage(
+                *lines.pack(item.line_hits, item.line_universe),
+                *conditions.pack(item.mcdc_hits, item.mcdc_universe),
+            ))
+        else:
             combined.append(None)
-            continue
-        parts: list[ImageCoverage] = []
-        for stem, coverage in item.items():
-            if stem not in stems:
-                stems.append(stem)
-            if isinstance(coverage, ImageCoverage):
-                previous = remembered.get(stem)
-                remembered[stem] = coverage if previous is None else combine_images([previous, coverage])
-                parts.append(coverage)
-            elif stem in remembered:
-                parts.append(_empty_coverage(remembered[stem]))
-            else:
-                parts.append(NO_HITS)
-        combined.append(combine_images(parts) if parts else NO_HITS)
-    missing = [stem for stem in stems if stem not in remembered]
+    missing = sorted(stems - remembered.keys())
     if missing:
         raise RuntimeError(f"profile export failed for {', '.join(missing)}")
     donor = next((item for item in combined if item is not None), None)
@@ -163,52 +206,29 @@ def _stored_profiles(
     profile_root: Path,
     timeout: float,
 ) -> list[ImageCoverage]:
-    recorded: list[object] = []
-    for source in paths:
-        profile_dir = profile_root / analyzer / source.name
-        profile_dir.mkdir(parents=True, exist_ok=True)
-        print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
-        started = time.monotonic()
-        # llvm-cov export of verilator_bin exceeds the 4 GiB score cap and
-        # returns "LLVM ERROR: out of memory", which drops that image.
-        value = call_timed(
-            run_file,
-            (analyzer, source, profile_dir),
-            timeout=timeout,
-            memory_bytes=None,
-        )
-        if value is None and time.monotonic() - started >= timeout:
-            print(
-                f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
-                file=sys.stderr,
-                flush=True,
+    def collect() -> Iterator[object]:
+        for source in paths:
+            profile_dir = profile_root / analyzer / source.name
+            profile_dir.mkdir(parents=True, exist_ok=True)
+            print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
+            started = time.monotonic()
+            # llvm-cov export of verilator_bin exceeds the 4 GiB score cap and
+            # returns "LLVM ERROR: out of memory", which drops that image.
+            value = call_timed(
+                run_file,
+                (analyzer, source, profile_dir),
+                timeout=timeout,
+                memory_bytes=None,
             )
-        recorded.append(value)
-    return _coverages_from_runs(recorded)
+            if value is None and time.monotonic() - started >= timeout:
+                print(
+                    f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            yield value
 
-
-def _select_adequate(
-    paths: Sequence[Path],
-    coverages: Sequence[ImageCoverage],
-    adequate_fn: AdequateFn,
-    work: Path,
-) -> list[str]:
-    work.mkdir(parents=True, exist_ok=True)
-    suite_path = work / "suite.txt"
-    whitebox_path = work / "whitebox.txt"
-    write_suite_file(list(paths), suite_path)
-    whitebox_path.write_text(
-        "".join(f"{whitebox_line(coverage)}\n" for coverage in coverages),
-        encoding="utf-8",
-    )
-    names = [path.name for path in paths]
-    selected: list[str] = []
-    for tc_id in adequate_fn(suite_path, whitebox_path):
-        index = int(tc_id) - 1
-        if index < 0 or index >= len(names):
-            raise ValueError(f"selection id {tc_id} out of range")
-        selected.append(names[index])
-    return selected
+    return _coverages_from_runs(collect())
 
 
 def _adequate_counts(
@@ -217,36 +237,36 @@ def _adequate_counts(
     adequate_fn: AdequateFn,
     work: Path,
 ) -> dict[str, dict[str, list[int]]]:
-    both = [
-        replace(
-            NO_HITS,
-            line_hits=frozenset(
-                f"{tool}:{hit}"
-                for tool, coverage in zip(stored, per_file)
-                for hit in coverage.line_hits
-            ),
-            mcdc_hits=frozenset(
-                f"{tool}:{hit}"
-                for tool, coverage in zip(stored, per_file)
-                for hit in coverage.mcdc_hits
-            ),
-        )
-        for per_file in zip(*stored.values())
-    ]
-    counts: dict[str, dict[str, list[int]]] = {}
-    for tool, coverages in {**stored, "both": both}.items():
-        goals = {
-            "line": [replace(coverage, mcdc_hits=frozenset()) for coverage in coverages],
-            "mcdc": [replace(coverage, line_hits=frozenset()) for coverage in coverages],
-            "joint": coverages,
-        }
-        counts[tool] = {
-            goal: [
-                len(_select_adequate(paths, inputs, adequate_fn, work / tool / goal))
-                for _ in range(FILTER_DRAWS)
-            ] if any(item.line_hits or item.mcdc_hits for item in inputs) else [0] * FILTER_DRAWS
-            for goal, inputs in goals.items()
-        }
+    counts = {}
+    for tool in [*stored, "both"]:
+        sources = stored if tool == "both" else {tool: stored[tool]}
+        counts[tool] = {}
+        for goal in ("line", "mcdc", "joint"):
+            directory = work / tool / goal
+            directory.mkdir(parents=True, exist_ok=True)
+            suite = directory / "suite.txt"
+            whitebox = directory / "whitebox.txt"
+            write_suite_file(list(paths), suite)
+            has_hits = False
+            with whitebox.open("w", encoding="utf-8") as output:
+                for per_file in zip(*sources.values(), strict=True):
+                    tokens = []
+                    for name, coverage in zip(sources, per_file):
+                        prefix = f"{name}:" if tool == "both" else ""
+                        if goal != "mcdc":
+                            tokens.extend(f"L{prefix}{hit}" for hit in coverage.line_hits)
+                        if goal != "line":
+                            tokens.extend(f"M{prefix}{hit}" for hit in coverage.mcdc_hits)
+                    has_hits |= bool(tokens)
+                    print(" ".join(sorted(tokens)), file=output)
+            draws = []
+            for _ in range(FILTER_DRAWS):
+                selected = adequate_fn(suite, whitebox) if has_hits else []
+                for tc_id in selected:
+                    if not 1 <= int(tc_id) <= len(paths):
+                        raise ValueError(f"selection id {tc_id} out of range")
+                draws.append(len(selected))
+            counts[tool][goal] = draws
     return counts
 
 

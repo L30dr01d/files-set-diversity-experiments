@@ -318,7 +318,9 @@ def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, mon
     assert all(len(draws) == 10 for _, samples in plotted for draws in samples)
     assert [tick.get_text() for tick in axes[0].get_xticklabels()] == ["100%", "75%", "50%", "25%"]
     assert axes[1].get_ylabel() == "Files kept (%)"
-    assert {axes[i].get_ylim() for i in (0, 2, 5, 7)} == {(-5, 105)}
+    assert [axes[i].get_ylim() for i in (0, 2, 5, 7)] == [
+        (-3, 53), (-5, 105), (-4, 70), (-5, 105),
+    ]
     assert {axes[i].get_ylim() for i in (1, 3, 4, 6, 8, 9, 11, 13, 14)} == {(-3, 53)}
     assert plotted[1][1] == [[50.0] * 10]
     assert plotted[3][1] == [[0.0] * 10]
@@ -347,7 +349,8 @@ def test_plot_zooms_in_on_narrow_and_constant_samples():
     figure = plot_coverage_bars(results, _coverage_experiment(), dataset_size=4)
     try:
         assert figure.get_suptitle() == "Viewer title (ds_one)"
-        assert figure.axes[0].get_ylim() == (82, 87)
+        assert figure.axes[0].get_ylim() == (82, 84)
+        assert figure.axes[2].get_ylim() == (85, 87)
         assert figure.axes[1].get_ylim() == (24, 26)
     finally:
         plt.close(figure)
@@ -875,3 +878,34 @@ def test_adequacy_counts_use_goal_and_tool_specific_hits(tmp_path):
     )
     assert counts["verilator"]["line"] == [0] * 10
     assert ("verilator", "line") not in observed
+
+
+def test_stored_profiles_share_universe_and_pack_hits(tmp_path, monkeypatch):
+    from experiment_runner import coverage_with_filter as module
+
+    ids = frozenset(f"source:{i}" for i in range(100))
+    other_ids = frozenset(f"source:{i}" for i in reversed(range(100)))
+    profiles = iter([_line_coverage(ids, ids), _line_coverage(frozenset({"source:2"}), other_ids)])
+    monkeypatch.setattr(module, "call_timed", lambda *args, **kwargs: next(profiles))
+    first, second = module._stored_profiles("tool", [Path("a"), Path("b")], None, tmp_path, 1)
+    assert first.line_universe is second.line_universe
+    assert first.line_hits.bits.bit_count() == 100
+    assert set(second.line_hits) == {"source:2"}
+
+def test_compact_profiles_preserve_whitebox_and_percentages_as_universe_grows():
+    from experiment_runner.analyzer_coverage import combine_images, subset_percents, whitebox_line
+    from experiment_runner.coverage_with_filter import _coverages_from_runs
+
+    empty = frozenset()
+    lines = frozenset(f"a:{i}" for i in range(90))
+    condition = frozenset({"a:1:2:0"})
+    original = [
+        ImageCoverage(lines, lines, empty, condition),
+        ImageCoverage(frozenset({"b:1"}), lines | {"b:1"}, condition, condition),
+    ]
+    packed = _coverages_from_runs({"image": coverage} for coverage in original)
+    assert [whitebox_line(item) for item in packed] == [whitebox_line(item) for item in original]
+    assert combine_images(packed) == combine_images(original)
+    assert subset_percents(packed[1:], combine_images(packed)) == subset_percents(
+        original[1:], combine_images(original)
+    )

@@ -250,14 +250,28 @@
       "id": "19_150_sv_panhard_filter_dpi",
       "type": "score_for_panhard_dpi",
       "title": "150 sv files filtered by panhard filter (DPI)",
-      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150"],
       "tools": ["levassor-measure"]
     },
     {
       "id": "19_150_sv_panhard_filter_rni",
       "type": "score_for_panhard_rni",
       "title": "150 sv files filtered by panhard filter (RNI)",
-      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150"],
+      "tools": ["levassor-measure"]
+    },
+    {
+      "id": "19_otk_sv-tests_panhard_filter_dpi",
+      "type": "score_for_panhard_dpi",
+      "title": "OTK & sv-tests cut filtered by panhard filter (DPI)",
+      "datasets": ["014_random_otk_150", "073_sv-test_cut_first_150"],
+      "tools": ["levassor-measure"]
+    },
+    {
+      "id": "19_otk_sv-tests_panhard_filter_rni",
+      "type": "score_for_panhard_rni",
+      "title": "OTK & sv-tests cut filtered by panhard filter (RNI)",
+      "datasets": ["014_random_otk_150", "073_sv-test_cut_first_150"],
       "tools": ["levassor-measure"]
     },
     {
@@ -345,17 +359,45 @@
       "tools": []
     },
     {
-      "id": "26_coverage_wih_filter_panhard_dpi",
+      "id": "26_150_sv_coverage_wih_filter_panhard_dpi",
       "type": "coverage_with_filter_panhard_dpi",
-      "title": "Coverage for random 150, otk 150 and sv-tests 150, filtered by Panhard DPI",
-      "datasets": ["009_random_sv_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "title": "Coverage for random 150 filtered by Panhard DPI",
+      "datasets": ["009_random_sv_150"],
       "tools": []
     },
     {
-      "id": "26_coverage_wih_filter_panhard_rni",
+      "id": "26_150_otk_coverage_wih_filter_panhard_dpi",
+      "type": "coverage_with_filter_panhard_dpi",
+      "title": "Coverage for otk 150 filtered by Panhard DPI",
+      "datasets": ["014_random_otk_150"],
+      "tools": []
+    },
+    {
+      "id": "26_150_sv-tests_coverage_wih_filter_panhard_dpi",
+      "type": "coverage_with_filter_panhard_dpi",
+      "title": "Coverage for sv-tests 150, filtered by Panhard DPI",
+      "datasets": ["073_sv-test_cut_first_150"],
+      "tools": []
+    },
+    {
+      "id": "26_150_sv_coverage_wih_filter_panhard_rni",
       "type": "coverage_with_filter_panhard_rni",
-      "title": "Coverage for random 150, otk 150 and sv-tests 150, filtered by Panhard RNI",
-      "datasets": ["009_random_sv_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "title": "Coverage for random 150 filtered by Panhard RNI",
+      "datasets": ["009_random_sv_150"],
+      "tools": []
+    },
+    {
+      "id": "26_150_otk_coverage_wih_filter_panhard_rni",
+      "type": "coverage_with_filter_panhard_rni",
+      "title": "Coverage for otk 150 filtered by Panhard RNI",
+      "datasets": ["014_random_otk_150"],
+      "tools": []
+    },
+    {
+      "id": "26_150_sv-tests_coverage_wih_filter_panhard_rni",
+      "type": "coverage_with_filter_panhard_rni",
+      "title": "Coverage for sv-tests 150 filtered by Panhard RNI",
+      "datasets": ["073_sv-test_cut_first_150"],
       "tools": []
     }
   ]

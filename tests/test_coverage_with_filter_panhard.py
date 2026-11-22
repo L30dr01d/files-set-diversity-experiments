@@ -94,6 +94,8 @@ def test_two_file_dataset_shows_diversity_and_residual():
     }
     fig = plot_panhard_coverage({"data": {"stop_count": 2, "steps": [step]}}, experiment)
     try:
+        assert 75 <= fig.axes[1].get_ylim()[1] < 100
+        assert 50 <= fig.axes[2].get_ylim()[1] < fig.axes[1].get_ylim()[1]
         errorbar, = (
             item for item in fig.axes[0].containers if isinstance(item, ErrorbarContainer)
         )
