@@ -246,3 +246,31 @@ def test_matrix_rejects_invalid_disable_reasons(tmp_path, capsys):
         config.write_text(json.dumps(payload))
         assert main(["matrix"], root=tmp_path) == 1
         assert "disable_reason" in capsys.readouterr().err
+
+
+def test_panhard_coverage_types_dispatch_by_ranking(tmp_path, monkeypatch, capsys):
+    from experiment_runner import cli
+
+    datasets = ["first", "second"]
+    for dataset in datasets:
+        (tmp_path / "datasets" / dataset).mkdir(parents=True)
+    types = ["coverage_with_filter_panhard_dpi", "coverage_with_filter_panhard_rni"]
+    records = [
+        {"id": ranking, "type": kind, "title": ranking, "datasets": datasets, "tools": []}
+        for ranking, kind in zip(("dpi", "rni"), types)
+    ]
+    (tmp_path / "experiments.json").write_text(json.dumps({"experiments": records}))
+    calls = []
+
+    def run(experiment, root, *, ranking, output_dir):
+        calls.append((experiment.datasets, experiment.tools, root, ranking, output_dir))
+
+    monkeypatch.setattr(cli, "run_coverage_with_filter_panhard", run)
+    assert main(["matrix"], root=tmp_path) == 0
+    assert [row["type"] for row in json.loads(capsys.readouterr().out)["include"]] == types
+    for ranking in ("dpi", "rni"):
+        assert main(["run", ranking], root=tmp_path) == 0
+    assert calls == [
+        (tuple(datasets), (), tmp_path, ranking, tmp_path / "output")
+        for ranking in ("dpi", "rni")
+    ]

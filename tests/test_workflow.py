@@ -88,7 +88,7 @@ def test_empty_matrix_skips_experiments_but_allows_gallery():
 
 def test_coverage_experiment_installs_clang():
     experiment = TEXT.split("\n  experiment:\n")[1].split("\n  site:\n")[0]
-    guard = "matrix.type == 'coverage_with_filter'"
+    guard = "startsWith(matrix.type, 'coverage_')"
     install = (
         "sudo apt-get install -y clang llvm autoconf autotools-dev bison flex "
         "libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev"

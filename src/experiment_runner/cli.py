@@ -8,6 +8,7 @@ from pathlib import Path
 
 from experiment_runner.config import ConfigError, Experiment, load_config
 from experiment_runner.coverage_with_filter import run_coverage_with_filter
+from experiment_runner.coverage_with_filter_panhard import run_coverage_with_filter_panhard
 from experiment_runner.measure_per_set import run_measure_per_set
 from experiment_runner.score_for_fastr import run_score_for_fastr
 from experiment_runner.score_for_panhard import run_score_for_panhard
@@ -67,6 +68,11 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             return 0
         if match.type == "coverage_with_filter":
             run_coverage_with_filter(match, root, output_dir=root / "output")
+            return 0
+        if match.type in ("coverage_with_filter_panhard_dpi", "coverage_with_filter_panhard_rni"):
+            run_coverage_with_filter_panhard(
+                match, root, ranking=match.type.rsplit("_", 1)[1], output_dir=root / "output"
+            )
             return 0
         raise ConfigError(f"unknown type: {match.type}")
     except Exception as exc:  # noqa: BLE001

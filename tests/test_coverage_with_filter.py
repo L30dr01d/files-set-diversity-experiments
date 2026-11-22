@@ -8,7 +8,7 @@ def test_failed_profile_export_warns_and_keeps_the_other_image(tmp_path: Path, m
     import json
     import subprocess
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     profile_dir = tmp_path / "profiles"
     profile_dir.mkdir()
@@ -73,7 +73,7 @@ def test_ci_times_the_export_and_reads_the_json_file(tmp_path: Path, monkeypatch
     import json
     import subprocess
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     image = tmp_path / "verilator_bin"
@@ -120,7 +120,7 @@ def test_ci_times_the_export_and_reads_the_json_file(tmp_path: Path, monkeypatch
 
 
 def test_assign_profraws_maps_learned_signature_and_exact_name() -> None:
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     assign_profraws = getattr(module, "assign_profraws", None)
     assert assign_profraws is not None
@@ -491,7 +491,7 @@ def _line_coverage(hits: frozenset[str], universe: frozenset[str]) -> ImageCover
 
 
 def test_calibration_falls_back_to_v_when_version_writes_two_profraws(tmp_path: Path, monkeypatch) -> None:
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
     flags: list[str] = []
@@ -510,7 +510,7 @@ def test_calibration_falls_back_to_v_when_version_writes_two_profraws(tmp_path: 
 
 
 def test_calibration_returns_none_when_every_flag_writes_two_profraws(tmp_path: Path, monkeypatch) -> None:
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
     flags: list[str] = []
@@ -530,7 +530,7 @@ def test_analyzer_timeout_stops_child_process(tmp_path: Path) -> None:
     import sys
     import time
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     started = tmp_path / "started"
     survived = tmp_path / "survived"
@@ -554,7 +554,7 @@ def test_analyzer_timeout_stops_child_process(tmp_path: Path) -> None:
 def test_launch_deletes_stale_profraw_before_the_analyzer_runs(tmp_path: Path, monkeypatch) -> None:
     import subprocess
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
     profile_dir = tmp_path / "first.sv"
@@ -575,7 +575,7 @@ def test_leftover_profraw_warns_with_the_image_and_the_name(tmp_path: Path, monk
     import json
     import subprocess
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
     profile_dir = tmp_path / "profiles"
@@ -624,7 +624,7 @@ def test_missing_image_warns_when_the_profile_directory_is_not_empty(tmp_path: P
     import json
     import subprocess
 
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
     profile_dir = tmp_path / "profiles"
@@ -671,7 +671,7 @@ def test_missing_image_warns_when_the_profile_directory_is_not_empty(tmp_path: P
 
 
 def test_empty_profile_directory_adds_no_hits_and_no_warning(tmp_path: Path, monkeypatch, capsys) -> None:
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     _forbid_ensure_analyzers(monkeypatch, module)
 
@@ -784,7 +784,7 @@ def test_returned_image_map_scores_the_file_that_exported(tmp_path: Path) -> Non
 
 
 def test_compiler_env_builds_icarus_host_tools_with_clang(monkeypatch) -> None:
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     monkeypatch.delenv("CC_FOR_BUILD", raising=False)
     monkeypatch.setenv("CFLAGS", "-O2")
@@ -800,7 +800,7 @@ def test_compiler_env_builds_icarus_host_tools_with_clang(monkeypatch) -> None:
 
 
 def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
-    from experiment_runner import coverage_with_filter as module
+    from experiment_runner import instrumented_analyzers as module
 
     images = {stem: tmp_path / stem for stem in ("ivlpp", "ivl")}
     monkeypatch.setattr(module, "ensure_analyzers", lambda: (tmp_path / "iverilog", tmp_path / "verilator"))
@@ -835,7 +835,7 @@ def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
         assert [raw.name for raw in raws] == [f"{stem}.profraw"] * 2
         assert len({raw.parent for raw in raws}) == 2
         assert all(raw.parent != tmp_path for raw in raws)
-    assert module.default_run_set("iverilog", [], tmp_path, 120) == module._NO_HITS
+    assert module.default_run_set("iverilog", [], tmp_path, 120) == module.NO_HITS
     assert len(exports) == 2
 
 

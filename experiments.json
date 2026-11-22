@@ -11,46 +11,21 @@
         "015_algos_java_10_tasks_1_variant_10",
         "024_algos_15_tasks_1_variants_15"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "01_different_sv_sets",
       "type": "score_per_measure",
       "title": "Different sv sets",
-      "datasets": [
-        "001_random_sv_50",
-        "002_caesar_001_50",
-        "003_different_sv_subjective_50",
-        "004_similar_sv_subjective_50"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["001_random_sv_50", "002_caesar_001_50", "003_different_sv_subjective_50", "004_similar_sv_subjective_50"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "02_different_content_sets",
       "type": "score_per_measure",
       "title": "Different content sets",
-      "datasets": [
-        "005_random_sv_50",
-        "006_random_otk_50",
-        "007_algos_java_5_tasks_10_variants_50",
-        "008_duplicates_sv_25x2_50"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["005_random_sv_50", "006_random_otk_50", "007_algos_java_5_tasks_10_variants_50", "008_duplicates_sv_25x2_50"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "03_different_content_sets_big",
@@ -63,12 +38,7 @@
         "013_random_vhdl_150",
         "014_random_otk_150"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "04_small_vs_big_sv_sets",
@@ -83,85 +53,50 @@
         "020_similar_sv_cut_from_004_10",
         "021_duplicates_sv_5x2_cut_from_004_10"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "05_super_random_3",
       "type": "measure_per_set",
       "title": "Super random set",
-      "datasets": [
-        "025_3_super_random_3"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["025_3_super_random_3"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "06_otk_1000_time",
       "type": "measure_per_set",
       "title": "OTK 1000 time",
-      "datasets": [
-        "019_otk_1000"
-      ],
-      "tools": [
-        "levassor-measure"
-      ]
+      "datasets": ["019_otk_1000"],
+      "tools": ["levassor-measure"]
     },
     {
       "id": "07_dataset_time",
       "type": "measure_per_set",
       "title": "Real dataset time",
-      "datasets": [
-        "026_generated_files_56000"
-      ],
-      "tools": [
-        "levassor-measure"
-      ]
+      "datasets": ["026_generated_files_56000"],
+      "tools": ["levassor-measure"]
     },
     {
       "id": "08_score_fast_dataset_levassor",
       "type": "score_for_fastr",
       "title": "Real dataset filter by fastr + levassor scoring",
-      "datasets": [
-        "026_generated_files_56000"
-      ],
-      "tools": [
-        "levassor-measure"
-      ],
+      "datasets": ["026_generated_files_56000"],
+      "tools": ["levassor-measure"],
       "disable_reason": "FAST consumes too much memory"
     },
     {
       "id": "09_score_fast_otk_1000_levassor",
       "type": "score_for_fastr",
       "title": "otk filter by fastr + levassor scoring",
-      "datasets": [
-        "019_otk_1000"
-      ],
-      "tools": [
-        "levassor-measure"
-      ]
+      "datasets": ["019_otk_1000"],
+      "tools": ["levassor-measure"]
     },
     {
       "id": "10_score_fast_duplicates_150_all",
       "type": "score_for_fastr",
       "title": "Duplicates filter by fastr + score by all",
-      "datasets": [
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["011_duplicates_sv_75x2_150"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "11_one_file",
@@ -179,69 +114,36 @@
         "029_one_sv_file_75",
         "030_one_sv_file_100"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "12_dataset_random_filter_levassor_measure",
       "type": "score_for_random_filter",
       "title": "Dataset filtered by random filter + levassor measure",
-      "datasets": [
-        "026_generated_files_56000"
-      ],
-      "tools": [
-        "levassor-measure"
-      ],
+      "datasets": ["026_generated_files_56000"],
+      "tools": ["levassor-measure"],
       "disable_reason": "FAST consumes too much memory"
     },
     {
       "id": "13_150_sv_random_filter_levassor_measure",
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + levassor measure",
-      "datasets": [
-        "009_random_sv_150",
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "levassor-measure",
-        "panhard-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150"],
+      "tools": ["levassor-measure", "panhard-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "14_150_sv_random_filter_panhard_measure",
       "type": "score_for_random_filter",
       "title": "150 sv files filtered by random filter + panhard measure",
-      "datasets": [
-        "009_random_sv_150",
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "15_150_sv_fast_filter",
       "type": "score_for_fastr",
       "title": "150 sv files filtered by fast filter",
-      "datasets": [
-        "009_random_sv_150",
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "16_deptycheck_1",
@@ -254,10 +156,7 @@
         "034_deptycheck_renamed128_384",
         "035_deptycheck_renamed128_2_384"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_2",
@@ -275,80 +174,42 @@
         "055_033+035_768",
         "056_034+035_768"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_3_1",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
-      "datasets": [
-        "057_031+032+033_1152",
-        "058_031+032+034_1152",
-        "059_031+032+035_1152",
-        "060_031+033+034_1152"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "datasets": ["057_031+032+033_1152", "058_031+032+034_1152", "059_031+032+035_1152", "060_031+033+034_1152"],
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_3_2",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
-      "datasets": [
-        "061_031+033+035_1152",
-        "062_031+034+035_1152",
-        "063_032+033+034_1152",
-        "064_032+033+035_1152"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "datasets": ["061_031+033+035_1152", "062_031+034+035_1152", "063_032+033+034_1152", "064_032+033+035_1152"],
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_3_3",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
-      "datasets": [
-        "065_032+034+035_1152",
-        "066_033+034+035_1152"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "datasets": ["065_032+034+035_1152", "066_033+034+035_1152"],
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_4_1",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
-      "datasets": [
-        "067_031+032+033+034_1536",
-        "068_031+032+033+035_1536",
-        "069_031+032+034+035_1536"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "datasets": ["067_031+032+033+034_1536", "068_031+032+033+035_1536", "069_031+032+034+035_1536"],
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "16_deptycheck_4_5",
       "type": "score_per_measure",
       "title": "DepTyCheck modifications",
-      "datasets": [
-        "070_031+033+034+035_1536",
-        "071_032+033+034+035_1536"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure"
-      ]
+      "datasets": ["070_031+033+034+035_1536", "071_032+033+034+035_1536"],
+      "tools": ["panhard-measure", "levassor-measure"]
     },
     {
       "id": "17_similar_random_different_vs_duplicates",
@@ -362,59 +223,42 @@
         "018_duplicates_001_sv_100",
         "037_duplicates_003_sv_100"
       ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "18_langs_and_solutions",
       "type": "score_per_measure",
       "title": "Langs and soultions",
-      "datasets": [
-        "043_1_lang_10_solutions_10",
-        "044_1_lang_15_solutions_15",
-        "045_10_langs_1_solution_10",
-        "046_15_langs_1_solution_15"
-      ],
-      "tools": [
-        "panhard-measure",
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "datasets": ["043_1_lang_10_solutions_10", "044_1_lang_15_solutions_15", "045_10_langs_1_solution_10", "046_15_langs_1_solution_15"],
+      "tools": ["panhard-measure", "levassor-measure", "poisson-measure", "ncd1-measure"]
+    },
+    {
+      "id": "19_50_sv_panhard_filter_dpi",
+      "type": "score_for_panhard_dpi",
+      "title": "50 sv files filtered by panhard filter (DPI)",
+      "datasets": ["001_random_sv_50"],
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
+    },
+    {
+      "id": "19_50_sv_panhard_filter_rni",
+      "type": "score_for_panhard_rni",
+      "title": "50 sv files filtered by panhard filter (RNI)",
+      "datasets": ["001_random_sv_50"],
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "19_150_sv_panhard_filter_dpi",
       "type": "score_for_panhard_dpi",
       "title": "150 sv files filtered by panhard filter (DPI)",
-      "datasets": [
-        "009_random_sv_150",
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ],
-      "disable_reason": "Takes longer than 6 hr"
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "tools": ["levassor-measure"]
     },
     {
       "id": "19_150_sv_panhard_filter_rni",
       "type": "score_for_panhard_rni",
       "title": "150 sv files filtered by panhard filter (RNI)",
-      "datasets": [
-        "009_random_sv_150",
-        "011_duplicates_sv_75x2_150"
-      ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ],
-      "disable_reason": "Takes longer than 6 hr"
+      "datasets": ["009_random_sv_150", "011_duplicates_sv_75x2_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "tools": ["levassor-measure"]
     },
     {
       "id": "20_algo_panhard_filter_dpi",
@@ -427,11 +271,7 @@
         "015_algos_java_10_tasks_1_variant_10",
         "024_algos_15_tasks_1_variants_15"
       ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "20_algo_panhard_filter_rni",
@@ -444,11 +284,7 @@
         "015_algos_java_10_tasks_1_variant_10",
         "024_algos_15_tasks_1_variants_15"
       ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "21_samle_sv_panhard_filter_dpi",
@@ -463,11 +299,7 @@
         "020_similar_sv_cut_from_004_10",
         "021_duplicates_sv_5x2_cut_from_004_10"
       ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "21_samle_sv_panhard_filter_rni",
@@ -482,55 +314,49 @@
         "020_similar_sv_cut_from_004_10",
         "021_duplicates_sv_5x2_cut_from_004_10"
       ],
-      "tools": [
-        "levassor-measure",
-        "poisson-measure",
-        "ncd1-measure"
-      ]
+      "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "22_coverage_wih_filter_random_sv",
       "type": "coverage_with_filter",
       "title": "Coverage for random 50, filtered by FAST-R",
-      "datasets": [
-        "001_random_sv_50"
-      ],
-      "tools": [
-        "fast-filter"
-      ]
+      "datasets": ["001_random_sv_50"],
+      "tools": []
     },
     {
       "id": "23_coverage_wih_filter_duplicates",
       "type": "coverage_with_filter",
       "title": "Coverage for duplicates, filtered by FAST-R",
-      "datasets": [
-        "018_duplicates_001_sv_100"
-      ],
-      "tools": [
-        "fast-filter"
-      ]
+      "datasets": ["018_duplicates_001_sv_100"],
+      "tools": []
     },
     {
       "id": "24_coverage_wih_filter_otk",
       "type": "coverage_with_filter",
       "title": "Coverage for otk, filtered by FAST-R",
-      "datasets": [
-        "014_random_otk_150"
-      ],
-      "tools": [
-        "fast-filter"
-      ]
+      "datasets": ["014_random_otk_150"],
+      "tools": []
     },
     {
       "id": "25_coverage_wih_filter_sv_tests",
       "type": "coverage_with_filter",
       "title": "Coverage for sv-tests, filtered by FAST-R",
-      "datasets": [
-        "072_sv-tests_1028"
-      ],
-      "tools": [
-        "fast-filter"
-      ]
+      "datasets": ["072_sv-tests_1028"],
+      "tools": []
+    },
+    {
+      "id": "26_coverage_wih_filter_panhard_dpi",
+      "type": "coverage_with_filter_panhard_dpi",
+      "title": "Coverage for random 150, otk 150 and sv-tests 150, filtered by Panhard DPI",
+      "datasets": ["009_random_sv_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "tools": []
+    },
+    {
+      "id": "26_coverage_wih_filter_panhard_rni",
+      "type": "coverage_with_filter_panhard_rni",
+      "title": "Coverage for random 150, otk 150 and sv-tests 150, filtered by Panhard RNI",
+      "datasets": ["009_random_sv_150", "014_random_otk_150", "073_sv-test_cut_first_150"],
+      "tools": []
     }
   ]
 }

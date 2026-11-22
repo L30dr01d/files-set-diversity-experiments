@@ -6,7 +6,7 @@ Config-driven diversity experiments. Edit `experiments.json`, push, and browse t
 uv sync --python 3.14 --extra fastr
 uv run pytest
 uv run python -m experiment_runner matrix
-uv run python -m experiment_runner run 05_super_random_3
+uv run python -m experiment_runner run 19_150_sv_panhard_filter_rni
 ```
 
 Also install dependencies for Panhard:
@@ -22,8 +22,9 @@ Experiment types:
 - `score_for_random_filter` — leftover-% boxes; `tools[0]` filters, every tool is plotted.
 - `score_for_panhard_dpi` and `score_for_panhard_rni` — file-count plots using the selected ranking. A shaded band extends one residual on either side of the Panhard measure, and a dashed line marks where filtering would normally stop.
 - `coverage_with_filter` — one dataset with ten fresh line and MC/DC measurements per budget (100%, 75%, 50%, 25%). The figure shows coverage by budget and files kept for line, MC/DC, and joint adequacy. Verilator and Icarus each have a row, followed by a row of adequacy results for a shared suite that preserves coverage in both tools.
+- `coverage_with_filter_panhard_dpi` and `coverage_with_filter_panhard_rni` — one column per dataset with diversity and its residual band, line coverage, and MC/DC coverage. Instrumented Icarus and Verilator run on every subset in the full trace, including steps past the marked Panhard stop. Set `"tools": []` for coverage experiments to use the built-in tools.
 
-All types except `score_per_measure` and `coverage_with_filter` use the same color for each measure: `panhard-measure` blue, `levassor-measure` orange, `poisson-measure` green, `ncd1-measure` red. `coverage_with_filter` uses Icarus `C0`, Verilator `C1`, and `C2` for the shared-suite row.
+The measure plots use consistent colors for Panhard (blue), Levassor (orange), Poisson (green), and NCD1 (red). Coverage plots use Icarus `C0` and Verilator `C1`. The shared-suite row in `coverage_with_filter` uses `C2`.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
 Each run writes `output/<id>.png` and `output/<id>.svg` from the same plot.
@@ -64,4 +65,3 @@ python tools/combine_datasets.py \
 `copy_idr_flat` writes to `{output}_{count}` (file count appended). `rename_lowercase_idents` keeps keywords and Capitalized words, renames lowercase-starting tokens; `--mode same-length` or `128`; optional `--seed` (default 0). `combine_datasets` writes every pair, then every triple, then all four; copied files are prefixed with the source id.
 
 Set an experiment's optional `disable_reason` to a nonempty string to exclude it from CI and display the reason in the gallery. Manual runs remain available.
-

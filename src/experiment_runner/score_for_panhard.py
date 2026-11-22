@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from experiment_runner.config import Experiment
@@ -21,6 +21,23 @@ def _run_filter(
     filter_fn: FilterFn, path_strs: tuple[str, ...], ranking: str
 ) -> FilterResult:
     return filter_fn([Path(p) for p in path_strs], dont_stop=True, ranking=ranking)
+
+
+def timed_panhard_filter(
+    paths: Sequence[Path],
+    ranking: str,
+    *,
+    filter_fn: FilterFn = filter_paths,
+    timeout: float = SCORE_TIMEOUT_SECONDS,
+) -> FilterResult | None:
+    result = call_timed(
+        _run_filter,
+        (filter_fn, tuple(str(path) for path in paths), ranking),
+        timeout=timeout,
+    )
+    if result is not None and not isinstance(result, FilterResult):
+        raise TypeError("filter_fn must return a FilterResult")
+    return result
 
 
 def run_score_for_panhard(
@@ -47,11 +64,7 @@ def run_score_for_panhard(
         paths = [files_dir / name for name in names]
         print(f"{dataset_name} {PANHARD} dont-stop", flush=True)
         t0 = clock()
-        raw = call_timed(
-            _run_filter,
-            (filter_fn, tuple(str(p) for p in paths), ranking),
-            timeout=timeout,
-        )
+        raw = timed_panhard_filter(paths, ranking, filter_fn=filter_fn, timeout=timeout)
         filter_seconds = float(clock() - t0)
         if raw is None:
             results[dataset_name] = {
@@ -61,8 +74,6 @@ def run_score_for_panhard(
             }
             print(f"{dataset_name} kept=null", flush=True)
             continue
-        if not isinstance(raw, FilterResult):
-            raise TypeError("filter_fn must return a FilterResult")
         steps: list[dict] = []
         for index, step in enumerate(raw.steps):
             measures = {

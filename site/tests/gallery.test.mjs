@@ -46,6 +46,7 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
       assert.equal(result.status, 0, result.stdout + result.stderr);
       const index = await readFile(join(root, 'dist', 'index.html'), 'utf8');
       assert.match(index, /<h1\b[^>]*>Text Set Diversity Experiments<\/h1>/);
+      assert.match(index, /Latest results of 2 experiments/);
       assert.match(index, /<h2\b[^>]*>A &lt; B &amp; /);
       assert.ok(index.indexOf('z_last.svg') < index.indexOf('a_first.svg'));
       const plots = elements(index, 'img').filter(img => img.loading === 'lazy');
@@ -63,7 +64,10 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
           assert.deepEqual(original, ext === 'png' ? png : Buffer.from(svg));
         }
         assert.equal(elements(detail, 'img').length, 1);
-        assert.deepEqual(elements(detail, 'button').filter(button => 'data-zoom' in button || 'data-fit' in button).map(button => button['aria-label']), ['Fit image', 'Zoom in', 'Zoom out']);
+        assert.deepEqual(elements(detail, 'button').filter(button => 'data-zoom' in button || 'data-fit' in button).map(button => button['aria-label']), ['Fit image']);
+        const sliders = elements(detail, 'input').filter(input => 'data-zoom' in input);
+        assert.deepEqual(sliders.map(({ type, min, max, value, 'aria-orientation': orientation }) =>
+          [type, min, max, value, orientation]), [['range', '50', '500', '100', 'vertical']]);
         assert.ok(elements(detail, 'button').some(button => 'data-fit' in button && button['aria-disabled'] === 'true'));
         assert.ok(elements(detail, 'div').some(div => div['aria-label'] === 'Plot image' && div.tabindex === '0'));
         assert.equal(links.filter(link => 'download' in link).length, 2);
@@ -92,12 +96,14 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
         assert.equal(result.status, 0, result.stdout + result.stderr);
         const index = await readFile(join(root, 'dist', 'index.html'), 'utf8');
         assert.equal(elements(index, 'a').filter(link => link.href?.startsWith(`${base}experiments/`)).length, 2);
+        assert.match(index, /Latest results of 2 experiments/);
         assert.equal(elements(index, 'img').filter(img => img.loading === 'lazy').length, missing.includes('svg') ? 1 : 2);
         assert.equal(index.includes('SVG preview unavailable'), missing.includes('svg'));
         const detail = await readFile(join(root, 'dist', 'experiments', 'z_last', 'index.html'), 'utf8');
         assert.equal(elements(detail, 'img').length, missing.includes('svg') ? 0 : 1);
         assert.equal(detail.includes('Plot .svg was not found.'), missing.includes('svg'));
-        assert.equal(elements(detail, 'button').filter(button => 'data-zoom' in button || 'data-fit' in button).length, missing.includes('svg') ? 0 : 3);
+        assert.equal(elements(detail, 'button').filter(button => 'data-fit' in button).length, missing.includes('svg') ? 0 : 1);
+        assert.equal(elements(detail, 'input').filter(input => 'data-zoom' in input).length, missing.includes('svg') ? 0 : 1);
         const links = elements(detail, 'a');
         assert.ok(links.some(link => link.href === base));
         for (const ext of ['png', 'svg']) {
@@ -117,8 +123,10 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
       for (const file of ['index.html', 'experiments/z_last/index.html']) {
         const html = await readFile(join(root, 'dist', file), 'utf8');
         assert.match(html, /Paused &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; slow/);
+        if (file === 'index.html') assert.match(html, /Latest results of 1 experiment\b/);
         assert.equal(elements(html, 'img').filter(img => img.src.includes('/plots/')).length, 0);
-        assert.equal(elements(html, 'button').filter(button => 'data-zoom' in button).length, 0);
+        assert.equal(elements(html, 'input').filter(input => 'data-zoom' in input).length, 0);
+        assert.equal(elements(html, 'button').filter(button => 'data-fit' in button).length, 0);
         assert.equal(elements(html, 'a').filter(link => 'download' in link).length, 0);
         assert.ok(!html.includes('SVG preview unavailable') && !html.includes('Plot .svg was not found.'));
       }

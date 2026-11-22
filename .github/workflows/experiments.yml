@@ -52,12 +52,26 @@ jobs:
           python-version: "3.14"
       - uses: astral-sh/setup-uv@v10.3.2
       - run: sudo apt-get update && sudo apt-get install -y bc
-      - if: matrix.type == 'coverage_with_filter'
+      - if: startsWith(matrix.type, 'coverage_')
         run: sudo apt-get install -y clang llvm autoconf autotools-dev bison flex libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev
       - run: uv sync --extra fastr
-      - run: uv run python -m experiment_runner run "$EXPERIMENT_ID"
+      - run: |
+          if [[ "$EXPERIMENT_TYPE" == coverage_with_filter* ]]; then
+            (
+              while true; do
+                echo "Resource usage (free -m, df -h)"
+                free -m
+                df -h
+                sleep 60 >/dev/null 2>&1
+              done
+            ) &
+            diagnostics_pid=$!
+            trap 'kill "$diagnostics_pid" 2>/dev/null || true; wait "$diagnostics_pid" 2>/dev/null || true' EXIT
+          fi
+          uv run python -m experiment_runner run "$EXPERIMENT_ID"
         env:
           EXPERIMENT_ID: ${{ matrix.id }}
+          EXPERIMENT_TYPE: ${{ matrix.type }}
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: ${{ matrix.id }}

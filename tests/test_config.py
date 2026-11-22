@@ -18,7 +18,7 @@ def _write(path: Path, payload: object) -> Path:
     return path
 
 
-def test_known_types_include_four_experiment_types():
+def test_known_experiment_types():
     assert KNOWN_TYPES == frozenset(
         {
             "score_per_measure",
@@ -28,6 +28,8 @@ def test_known_types_include_four_experiment_types():
             "score_for_panhard_dpi",
             "score_for_panhard_rni",
             "coverage_with_filter",
+            "coverage_with_filter_panhard_dpi",
+            "coverage_with_filter_panhard_rni",
         }
     )
 
@@ -35,11 +37,11 @@ def test_known_types_include_four_experiment_types():
 def test_coverage_with_filter_experiment_is_configured():
     repo = Path(__file__).resolve().parents[1]
     loaded = load_experiments(repo / "experiments.json")
-    matches = [exp for exp in loaded if exp.id == "22_coverage_wih_filter"]
+    matches = [exp for exp in loaded if exp.id == "22_coverage_wih_filter_random_sv"]
     assert len(matches) == 1
     assert matches[0].type == "coverage_with_filter"
     assert matches[0].datasets == ("001_random_sv_50",)
-    assert matches[0].tools == ("fast-filter",)
+    assert matches[0].tools == ()
 
 
 def test_load_experiments_reads_fields(tmp_path: Path):
@@ -225,3 +227,24 @@ def test_load_config_accepts_existing_dirs(tmp_path: Path):
     )
     loaded = load_config(tmp_path)
     assert loaded[0].id == "ex1"
+
+
+@pytest.mark.parametrize("tools", [[], None, [" "]])
+def test_explicit_empty_tools_are_valid(tmp_path, tools):
+    record = {
+        "id": "coverage",
+        "type": "coverage_with_filter",
+        "title": "Coverage",
+        "datasets": ["dataset"],
+        "tools": tools,
+    }
+    path = _write(tmp_path / "experiments.json", {"experiments": [record]})
+    if tools == []:
+        assert load_experiments(path)[0].tools == ()
+        record["datasets"] = []
+        _write(path, {"experiments": [record]})
+        with pytest.raises(ConfigError, match="datasets"):
+            load_experiments(path)
+    else:
+        with pytest.raises(ConfigError, match="tools"):
+            load_experiments(path)

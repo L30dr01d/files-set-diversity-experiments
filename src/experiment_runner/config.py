@@ -14,6 +14,8 @@ KNOWN_TYPES = frozenset(
         "score_for_panhard_dpi",
         "score_for_panhard_rni",
         "coverage_with_filter",
+        "coverage_with_filter_panhard_dpi",
+        "coverage_with_filter_panhard_rni",
     }
 )
 
@@ -38,8 +40,10 @@ def _require_nonempty_str(value: object, field: str) -> str:
     return value
 
 
-def _require_name_tuple(value: object, field: str) -> tuple[str, ...]:
-    if not isinstance(value, list) or not value:
+def _require_name_tuple(
+    value: object, field: str, *, allow_empty: bool = False
+) -> tuple[str, ...]:
+    if not isinstance(value, list) or (not value and not allow_empty):
         raise ConfigError(f"missing {field}")
     names: list[str] = []
     for item in value:
@@ -76,7 +80,7 @@ def load_experiments(path: Path) -> list[Experiment]:
                 type=exp_type,
                 title=_require_nonempty_str(raw.get("title"), "title"),
                 datasets=_require_name_tuple(raw.get("datasets"), "datasets"),
-                tools=_require_name_tuple(raw.get("tools"), "tools"),
+                tools=_require_name_tuple(raw.get("tools"), "tools", allow_empty=True),
                 disable_reason=(
                     _require_nonempty_str(raw["disable_reason"], "disable_reason")
                     if "disable_reason" in raw else None
