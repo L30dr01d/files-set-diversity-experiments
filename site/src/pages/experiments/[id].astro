@@ -29,11 +29,133 @@ const base = import.meta.env.BASE_URL;
         : <button disabled title={disable_reason ?? "SVG file was not found"} aria-label="Download SVG"><DownloadIcon /> SVG</button>}
     </nav>
   </header>
-  <figure class="plot">
+  <figure class:list={['plot', !disable_reason && hasSvg && 'zoomable-plot']}>
     {disable_reason
       ? <p>{disable_reason}</p>
       : hasSvg
-      ? <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} />
+      ? <>
+          <div class="plot-scroll" role="region" aria-label="Plot image" tabindex="0">
+            <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} draggable="false" />
+          </div>
+          <div class="zoom-controls" role="group" aria-label="Plot zoom">
+            <output aria-label="Zoom level">100%</output>
+            <button type="button" class="secondary outline" data-fit aria-label="Fit image" aria-disabled="true">Fit</button>
+            <button type="button" class="secondary outline" data-zoom="1" aria-label="Zoom in" aria-disabled="false">+</button>
+            <button type="button" class="secondary outline" data-zoom="-1" aria-label="Zoom out" aria-disabled="true">−</button>
+          </div>
+        </>
       : <p>Plot .svg was not found.</p>}
   </figure>
 </Layout>
+
+<style>
+  .zoomable-plot {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+    place-items: stretch;
+    gap: .5rem;
+  }
+  .zoom-controls {
+    display: flex;
+    align-items: center;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    flex-direction: column;
+    gap: .25rem;
+  }
+  .zoom-controls button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--pico-border-radius);
+    margin: 0;
+    padding: 0;
+    font-size: .85rem;
+  }
+  .zoom-controls button[aria-disabled="true"] { opacity: .5; cursor: default; }
+  .zoom-controls output {
+    width: 40px;
+    color: var(--pico-muted-color);
+    font-size: .85rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .plot-scroll {
+    grid-column: 1;
+    grid-row: 1;
+    container-type: size;
+    overflow: auto;
+  }
+  .plot-scroll:focus-visible { outline: 2px solid var(--pico-primary); }
+  .plot-scroll img {
+    display: block;
+    width: calc(100cqw * var(--plot-zoom, 1));
+    max-width: none;
+    height: calc(100cqh * var(--plot-zoom, 1));
+    object-fit: contain;
+  }
+  .zoomable-plot[data-zoomed] .plot-scroll img { cursor: grab; user-select: none; }
+  .zoomable-plot[data-zoomed] .plot-scroll[data-dragging] { cursor: grabbing; }
+</style>
+
+<script>
+  const plot = document.querySelector<HTMLElement>('.zoomable-plot');
+  const viewport = plot?.querySelector<HTMLElement>('.plot-scroll');
+  const image = viewport?.querySelector('img');
+  const zoomOut = plot?.querySelector<HTMLButtonElement>('[data-zoom="-1"]');
+  const zoomIn = plot?.querySelector<HTMLButtonElement>('[data-zoom="1"]');
+  const fit = plot?.querySelector<HTMLButtonElement>('[data-fit]');
+  const zoomLevel = plot?.querySelector('output');
+
+  if (plot && viewport && image && zoomOut && zoomIn && fit && zoomLevel) {
+    let zoom = 1;
+    const maxZoom = 4;
+
+    const changeZoom = (target: number) => {
+      const next = Math.min(maxZoom, Math.max(1, target));
+      if (next === zoom) return;
+
+      // Keep the point at the center of the viewport in view as the plot scales.
+      const x = (viewport.scrollLeft + viewport.clientWidth / 2) / image.clientWidth;
+      const y = (viewport.scrollTop + viewport.clientHeight / 2) / image.clientHeight;
+      zoom = next;
+      plot.style.setProperty('--plot-zoom', String(zoom));
+      plot.toggleAttribute('data-zoomed', zoom > 1);
+      viewport.scrollTo(
+        x * image.clientWidth - viewport.clientWidth / 2,
+        y * image.clientHeight - viewport.clientHeight / 2,
+      );
+      zoomLevel.value = `${zoom * 100}%`;
+      zoomOut.setAttribute('aria-disabled', String(zoom === 1));
+      fit.setAttribute('aria-disabled', String(zoom === 1));
+      zoomIn.setAttribute('aria-disabled', String(zoom === maxZoom));
+    };
+
+    zoomOut.addEventListener('click', () => changeZoom(zoom - .25));
+    zoomIn.addEventListener('click', () => changeZoom(zoom + .25));
+    fit.addEventListener('click', () => changeZoom(1));
+
+    let drag: { id: number; x: number; y: number } | undefined;
+    image.addEventListener('pointerdown', event => {
+      if (zoom === 1 || event.pointerType !== 'mouse' || event.button !== 0) return;
+      drag = {
+        id: event.pointerId,
+        x: event.clientX + viewport.scrollLeft,
+        y: event.clientY + viewport.scrollTop,
+      };
+      viewport.setPointerCapture(event.pointerId);
+      viewport.setAttribute('data-dragging', '');
+    });
+    viewport.addEventListener('pointermove', event => {
+      if (drag?.id !== event.pointerId) return;
+      viewport.scrollTo(drag.x - event.clientX, drag.y - event.clientY);
+    });
+    viewport.addEventListener('lostpointercapture', () => {
+      drag = undefined;
+      viewport.removeAttribute('data-dragging');
+    });
+  }
+</script>

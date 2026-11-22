@@ -346,6 +346,7 @@ def test_plot_zooms_in_on_narrow_and_constant_samples():
     }
     figure = plot_coverage_bars(results, _coverage_experiment(), dataset_size=4)
     try:
+        assert figure.get_suptitle() == "Viewer title (ds_one)"
         assert figure.axes[0].get_ylim() == (82, 87)
         assert figure.axes[1].get_ylim() == (24, 26)
     finally:

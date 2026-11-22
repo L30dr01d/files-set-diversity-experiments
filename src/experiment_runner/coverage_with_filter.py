@@ -58,7 +58,7 @@ def plot_coverage_bars(results: dict, experiment: Experiment, dataset_size: int)
     fig, axes = plt.subplots(
         len(PLOT_ROWS), len(COLUMNS), figsize=(18, 10), constrained_layout=True
     )
-    fig.suptitle(experiment.title)
+    fig.suptitle(f"{experiment.title} ({experiment.datasets[0]})")
     coverage_panels = []
     files_kept_panels = []
     for row, (tool, label, color) in enumerate(PLOT_ROWS):

@@ -491,7 +491,7 @@
     {
       "id": "22_coverage_wih_filter_random_sv",
       "type": "coverage_with_filter",
-      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "title": "Coverage for random 50, filtered by FAST-R",
       "datasets": [
         "001_random_sv_50"
       ],
@@ -502,7 +502,7 @@
     {
       "id": "23_coverage_wih_filter_duplicates",
       "type": "coverage_with_filter",
-      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "title": "Coverage for duplicates, filtered by FAST-R",
       "datasets": [
         "018_duplicates_001_sv_100"
       ],
@@ -513,7 +513,7 @@
     {
       "id": "24_coverage_wih_filter_otk",
       "type": "coverage_with_filter",
-      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "title": "Coverage for otk, filtered by FAST-R",
       "datasets": [
         "014_random_otk_150"
       ],
@@ -524,7 +524,7 @@
     {
       "id": "25_coverage_wih_filter_sv_tests",
       "type": "coverage_with_filter",
-      "title": "Line and MC/DC coverage of instrumented iverilog and verilator",
+      "title": "Coverage for sv-tests, filtered by FAST-R",
       "datasets": [
         "072_sv-tests_1028"
       ],

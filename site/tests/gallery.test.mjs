@@ -28,6 +28,7 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
     for (const file of ['package.json', 'astro.config.mjs']) await cp(join(site, file), join(root, file));
     await symlink(join(site, 'node_modules'), join(root, 'node_modules'), 'dir');
     await mkdir(join(root, 'public', 'plots'), { recursive: true });
+    await cp(join(site, 'public', 'assets'), join(root, 'public', 'assets'), { recursive: true });
     const metadata = join(root, 'experiments.json');
     await writeFile(metadata, JSON.stringify({ experiments: entries }));
     for (const { id } of entries) {
@@ -47,8 +48,10 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
       assert.match(index, /<h1\b[^>]*>Text Set Diversity Experiments<\/h1>/);
       assert.match(index, /<h2\b[^>]*>A &lt; B &amp; /);
       assert.ok(index.indexOf('z_last.svg') < index.indexOf('a_first.svg'));
-      assert.equal(elements(index, 'img').length, 2);
-      assert.ok(elements(index, 'img').every(img => img.loading === 'lazy' && img.alt));
+      const plots = elements(index, 'img').filter(img => img.loading === 'lazy');
+      assert.equal(plots.length, 2);
+      assert.ok(plots.every(img => img.alt));
+      assert.ok(elements(index, 'img').some(img => img.src === `${base}assets/panhard-icon.svg` && img.alt === ''));
       const pages = [index];
       for (const { id } of entries) {
         const detail = await readFile(join(root, 'dist', 'experiments', id, 'index.html'), 'utf8');
@@ -60,14 +63,17 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
           assert.deepEqual(original, ext === 'png' ? png : Buffer.from(svg));
         }
         assert.equal(elements(detail, 'img').length, 1);
+        assert.deepEqual(elements(detail, 'button').filter(button => 'data-zoom' in button || 'data-fit' in button).map(button => button['aria-label']), ['Fit image', 'Zoom in', 'Zoom out']);
+        assert.ok(elements(detail, 'button').some(button => 'data-fit' in button && button['aria-disabled'] === 'true'));
+        assert.ok(elements(detail, 'div').some(div => div['aria-label'] === 'Plot image' && div.tabindex === '0'));
         assert.equal(links.filter(link => 'download' in link).length, 2);
         pages.push(detail);
       }
       for (const html of pages) {
         assert.equal(elements(html, 'html')[0]['data-theme'], 'light');
         assert.ok(elements(html, 'meta').some(meta => meta.name === 'color-scheme' && meta.content === 'light'));
-        assert.equal(elements(html, 'script').length, 0);
-        assert.ok(elements(html, 'img').every(img => img.src.endsWith('.svg') && img.alt));
+        assert.ok(elements(html, 'link').some(link => link.rel === 'icon' && link.href === `${base}assets/panhard-icon.svg`));
+        assert.ok(elements(html, 'img').every(img => img.src.endsWith('.svg') && 'alt' in img));
         assert.ok(elements(html, 'link').some(link => link.rel === 'stylesheet' && link.href.startsWith(`${base}_astro/`)));
         for (const { href, src } of [...elements(html, 'a'), ...elements(html, 'img'), ...elements(html, 'link')]) {
           const url = href ?? src;
@@ -86,11 +92,12 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
         assert.equal(result.status, 0, result.stdout + result.stderr);
         const index = await readFile(join(root, 'dist', 'index.html'), 'utf8');
         assert.equal(elements(index, 'a').filter(link => link.href?.startsWith(`${base}experiments/`)).length, 2);
-        assert.equal(elements(index, 'img').length, missing.includes('svg') ? 1 : 2);
+        assert.equal(elements(index, 'img').filter(img => img.loading === 'lazy').length, missing.includes('svg') ? 1 : 2);
         assert.equal(index.includes('SVG preview unavailable'), missing.includes('svg'));
         const detail = await readFile(join(root, 'dist', 'experiments', 'z_last', 'index.html'), 'utf8');
         assert.equal(elements(detail, 'img').length, missing.includes('svg') ? 0 : 1);
         assert.equal(detail.includes('Plot .svg was not found.'), missing.includes('svg'));
+        assert.equal(elements(detail, 'button').filter(button => 'data-zoom' in button || 'data-fit' in button).length, missing.includes('svg') ? 0 : 3);
         const links = elements(detail, 'a');
         assert.ok(links.some(link => link.href === base));
         for (const ext of ['png', 'svg']) {
@@ -110,8 +117,8 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
       for (const file of ['index.html', 'experiments/z_last/index.html']) {
         const html = await readFile(join(root, 'dist', file), 'utf8');
         assert.match(html, /Paused &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; slow/);
-        assert.equal(elements(html, 'img').length, 0);
-        assert.equal(elements(html, 'script').length, 0);
+        assert.equal(elements(html, 'img').filter(img => img.src.includes('/plots/')).length, 0);
+        assert.equal(elements(html, 'button').filter(button => 'data-zoom' in button).length, 0);
         assert.equal(elements(html, 'a').filter(link => 'download' in link).length, 0);
         assert.ok(!html.includes('SVG preview unavailable') && !html.includes('Plot .svg was not found.'));
       }
