@@ -525,6 +525,31 @@ def test_calibration_returns_none_when_every_flag_writes_two_profraws(tmp_path: 
     assert flags == ["-V", "--version"]
 
 
+def test_analyzer_timeout_stops_child_process(tmp_path: Path) -> None:
+    import sys
+    import time
+
+    from experiment_runner import coverage_with_filter as module
+
+    started = tmp_path / "started"
+    survived = tmp_path / "survived"
+    child = (
+        "import time; from pathlib import Path; "
+        f"Path({str(started)!r}).touch(); time.sleep(2); Path({str(survived)!r}).touch()"
+    )
+    parent = (
+        "import subprocess, sys, time; "
+        f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(4)"
+    )
+
+    before = time.monotonic()
+    assert module._run_analyzer([sys.executable, "-c", parent], tmp_path, timeout=1) is False
+    assert time.monotonic() - before < 3
+    assert started.exists()
+    time.sleep(2)
+    assert not survived.exists()
+
+
 def test_launch_deletes_stale_profraw_before_the_analyzer_runs(tmp_path: Path, monkeypatch) -> None:
     import subprocess
 
@@ -782,14 +807,13 @@ def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
     monkeypatch.setattr(module, "_image_signature", lambda image: image.name)
     launched = []
 
-    def launch(command, directory):
-        launched.append(Path(command[-1]).name)
+    def launch(command, directory, *, timeout):
+        assert timeout == 120
+        name = Path(command[-1]).name
+        launched.append(name)
         for stem in images:
             (directory / f"{stem}.profraw").touch()
-
-    def timed(fn, args, **kwargs):
-        result = fn(*args)
-        return None if args[1].name == "timeout.sv" else result
+        return name != "timeout.sv"
 
     exports = []
     coverage = ImageCoverage(frozenset({"l"}), frozenset({"l"}), frozenset({"m"}), frozenset({"m"}))
@@ -799,7 +823,6 @@ def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
         return coverage
 
     monkeypatch.setattr(module, "_run_analyzer", launch)
-    monkeypatch.setattr(module, "call_timed", timed)
     monkeypatch.setattr(module, "_export_merged", export)
     (tmp_path / "ivl.profraw").touch()
     assert module.default_run_set(

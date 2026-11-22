@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,7 @@ from experiment_runner.timeout import call_timed
 from fast_filter.suite import list_test_files, write_suite_file
 
 DESIGN_TIMEOUT_SECONDS = 120
+ANALYZER_CLEANUP_SECONDS = 5
 BUDGET_PERCENTS = (100, 75, 50, 25)
 FILTER_DRAWS = 10
 RunFile = Callable[
@@ -374,7 +376,9 @@ def _clear_profraws(profile_dir: Path) -> None:
         path.unlink()
 
 
-def _run_analyzer(command: list[str], profile_dir: Path) -> None:
+def _run_analyzer(
+    command: list[str], profile_dir: Path, *, timeout: float | None = None
+) -> bool:
     # %m merges into <signature>_0.profraw, so a leftover file would only gain hits.
     _clear_profraws(profile_dir)
     env = os.environ.copy()
@@ -385,9 +389,33 @@ def _run_analyzer(command: list[str], profile_dir: Path) -> None:
     env.pop("VERILATOR_BIN", None)
     try:
         # Probes and rejected sources are expected. Their text is not a run failure.
-        subprocess.run(command, env=env, check=False, capture_output=True)
+        if timeout is None:
+            subprocess.run(command, env=env, check=False, capture_output=True)
+            return True
+        process = subprocess.Popen(
+            command,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
     except OSError as exc:
         raise RuntimeError(f"analyzer failed to start: {exc}") from exc
+    try:
+        process.wait(timeout=timeout)
+        return True
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=ANALYZER_CLEANUP_SECONDS)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"could not reap analyzer PID {process.pid} after timing out: {command!r}"
+            ) from exc
+        return False
 
 
 def _warn_profile(image: Path, detail: str) -> None:
@@ -559,15 +587,17 @@ def _analyzer_images(analyzer: str) -> tuple[Path, dict[str, Path], dict[str, st
     return iverilog if analyzer == "iverilog" else verilator, images, signatures
 
 
-def _profile_source(analyzer: str, source: Path, profile_dir: Path, executable: Path) -> bool:
+def _profile_source(
+    analyzer: str, source: Path, profile_dir: Path, executable: Path,
+    *, timeout: float | None = None,
+) -> bool:
     with tempfile.TemporaryDirectory() as scratch_name:
         scratch = Path(scratch_name)
         if analyzer == "iverilog":
             command = iverilog_command(executable, source, scratch / "a.out")
         else:
             command = verilator_command(executable, source, scratch / "mdir")
-        _run_analyzer(command, profile_dir)
-    return True
+        return _run_analyzer(command, profile_dir, timeout=timeout)
 
 
 def default_run_file(
@@ -591,14 +621,10 @@ def default_run_set(
             raw_dir = Path(draw) / str(index)
             raw_dir.mkdir()
             print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
-            started = time.monotonic()
-            completed = call_timed(
-                _profile_source, (analyzer, source, raw_dir, executable),
-                timeout=timeout, memory_bytes=None,
-            )
+            completed = _profile_source(analyzer, source, raw_dir, executable, timeout=timeout)
             if completed:
                 profraws.extend(sorted(raw_dir.glob("*.profraw")))
-            elif time.monotonic() - started >= timeout:
+            else:
                 print(
                     f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
                     file=sys.stderr, flush=True,
