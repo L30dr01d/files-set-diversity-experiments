@@ -235,15 +235,15 @@
     {
       "id": "19_50_sv_panhard_filter_dpi",
       "type": "score_for_panhard_dpi",
-      "title": "50 sv files filtered by panhard filter (DPI)",
-      "datasets": ["001_random_sv_50"],
+      "title": "50 sv files & sv-tests cut filtered by panhard filter (DPI)",
+      "datasets": ["001_random_sv_50", "073_sv-test_cut_first_150"],
       "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
       "id": "19_50_sv_panhard_filter_rni",
       "type": "score_for_panhard_rni",
-      "title": "50 sv files filtered by panhard filter (RNI)",
-      "datasets": ["001_random_sv_50"],
+      "title": "50 sv files & sv-tests cut filtered by panhard filter (RNI)",
+      "datasets": ["001_random_sv_50", "073_sv-test_cut_first_150"],
       "tools": ["levassor-measure", "poisson-measure", "ncd1-measure"]
     },
     {
@@ -263,15 +263,15 @@
     {
       "id": "19_otk_sv-tests_panhard_filter_dpi",
       "type": "score_for_panhard_dpi",
-      "title": "OTK & sv-tests cut filtered by panhard filter (DPI)",
-      "datasets": ["014_random_otk_150", "073_sv-test_cut_first_150"],
+      "title": "OTK 50 filtered by panhard filter (DPI)",
+      "datasets": ["074_random_otk_50" ],
       "tools": ["levassor-measure"]
     },
     {
       "id": "19_otk_sv-tests_panhard_filter_rni",
       "type": "score_for_panhard_rni",
-      "title": "OTK & sv-tests cut filtered by panhard filter (RNI)",
-      "datasets": ["014_random_otk_150", "073_sv-test_cut_first_150"],
+      "title": "OTK 50 filtered by panhard filter (RNI)",
+      "datasets": ["074_random_otk_50"],
       "tools": ["levassor-measure"]
     },
     {
@@ -348,7 +348,7 @@
       "id": "24_coverage_wih_filter_otk",
       "type": "coverage_with_filter",
       "title": "Coverage for otk, filtered by FAST-R",
-      "datasets": ["014_random_otk_150"],
+      "datasets": ["074_random_otk_50"],
       "tools": []
     },
     {
@@ -369,7 +369,7 @@
       "id": "26_150_otk_coverage_wih_filter_panhard_dpi",
       "type": "coverage_with_filter_panhard_dpi",
       "title": "Coverage for otk 150 filtered by Panhard DPI",
-      "datasets": ["014_random_otk_150"],
+      "datasets": ["074_random_otk_50"],
       "tools": []
     },
     {
@@ -390,7 +390,7 @@
       "id": "26_150_otk_coverage_wih_filter_panhard_rni",
       "type": "coverage_with_filter_panhard_rni",
       "title": "Coverage for otk 150 filtered by Panhard RNI",
-      "datasets": ["014_random_otk_150"],
+      "datasets": ["074_random_otk_50"],
       "tools": []
     },
     {
