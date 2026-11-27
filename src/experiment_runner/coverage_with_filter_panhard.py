@@ -7,7 +7,6 @@ from experiment_runner.config import Experiment
 from experiment_runner.instrumented_analyzers import (
     ANALYZERS,
     DESIGN_TIMEOUT_SECONDS,
-    NO_HITS,
     RunSet,
     default_run_set,
     ensure_analyzers,
@@ -48,34 +47,18 @@ def run_coverage_with_filter_panhard(
             continue
 
         steps = []
-        universes = {tool: {"line": set(), "mcdc": set()} for tool, _, _ in ANALYZERS}
         for index, step in enumerate(trace.steps):
-            hits = {}
+            coverage = {}
             for tool, _, _ in ANALYZERS:
                 profile_dir = output_dir / "profiles" / experiment.id / dataset / str(index) / tool
-                coverage = run_set(tool, step.remaining, profile_dir, timeout) or NO_HITS
-                universes[tool]["line"].update(coverage.line_universe)
-                universes[tool]["mcdc"].update(coverage.mcdc_universe)
-                hits[tool] = {"line": len(coverage.line_hits), "mcdc": len(coverage.mcdc_hits)}
+                coverage[tool] = run_set(tool, step.remaining, profile_dir, timeout)
             steps.append({
                 "remaining_count": step.remaining_count,
                 "score": step.score,
                 "residual": step.residual,
-                "coverage": hits,
+                "coverage": coverage,
             })
 
-        totals = {
-            tool: {metric: len(points) for metric, points in metrics.items()}
-            for tool, metrics in universes.items()
-        }
-        for step in steps:
-            step["coverage"] = {
-                tool: {
-                    metric: 100 * hits / totals[tool][metric] if totals[tool][metric] else 0.0
-                    for metric, hits in metrics.items()
-                }
-                for tool, metrics in step["coverage"].items()
-            }
         results[dataset] = {"stop_count": trace.stop_count, "steps": steps}
 
     import matplotlib

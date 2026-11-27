@@ -24,6 +24,8 @@ Experiment types:
 - `coverage_with_filter` — one dataset with ten fresh line and MC/DC measurements per budget (100%, 75%, 50%, 25%). The figure shows coverage by budget and files kept for line, MC/DC, and joint adequacy. Verilator and Icarus each have a row, followed by a row of adequacy results for a shared suite that preserves coverage in both tools.
 - `coverage_with_filter_panhard_dpi` and `coverage_with_filter_panhard_rni` — one column per dataset with diversity and its residual band, line coverage, and MC/DC coverage. Instrumented Icarus and Verilator run on every subset in the full trace, including steps past the marked Panhard stop. Set `"tools": []` for coverage experiments to use the built-in tools.
 
+Coverage experiments require matching MC/DC-capable Clang and LLVM tools plus `jq`. Each draw runs independently. The runner merges its raw profiles with `llvm-profdata merge` and reads the line and MC/DC percentages from one `llvm-cov export -summary-only` report per analyzer.
+
 The measure plots use consistent colors for Panhard (blue), Levassor (orange), Poisson (green), and NCD1 (red). Coverage plots use Icarus `C0` and Verilator `C1`. The shared-suite row in `coverage_with_filter` uses `C2`.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 

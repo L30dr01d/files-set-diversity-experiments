@@ -137,11 +137,14 @@ def _call_timed(
     timeout: float,
     memory_bytes: int | None,
     measure_memory: bool = False,
+    raise_errors: bool = False,
 ) -> tuple[object, float | None]:
     if not _can_spawn(fn, args):
         try:
             return fn(*args), None
         except Exception as exc:  # noqa: BLE001
+            if raise_errors:
+                raise
             print(f"warning: {exc}", file=sys.stderr)
             return None, None
     ctx = multiprocessing.get_context("spawn")
@@ -172,13 +175,19 @@ def _call_timed(
             parent_conn.poll(wait)
         peak_mib = None if peak_bytes is None else peak_bytes / 1024**2
         if proc.exitcode not in (0, None):
+            if raise_errors:
+                raise RuntimeError(f"worker exited with code {proc.exitcode}")
             print(f"warning: worker exited with code {proc.exitcode}", file=sys.stderr)
             return None, peak_mib
         if not parent_conn.poll():
+            if raise_errors:
+                raise RuntimeError("worker exited without returning a result")
             return None, peak_mib
         status, payload = parent_conn.recv()
         if status == "ok":
             return payload, peak_mib
+        if raise_errors:
+            raise RuntimeError(payload)
         print(f"warning: {payload}", file=sys.stderr)
         return None, peak_mib
     finally:
@@ -194,8 +203,11 @@ def call_timed(
     *,
     timeout: float = SCORE_TIMEOUT_SECONDS,
     memory_bytes: int | None = WORKER_MEMORY_BYTES,
+    raise_errors: bool = False,
 ):
-    value, _peak = _call_timed(fn, args, timeout=timeout, memory_bytes=memory_bytes)
+    value, _peak = _call_timed(
+        fn, args, timeout=timeout, memory_bytes=memory_bytes, raise_errors=raise_errors,
+    )
     return value
 
 

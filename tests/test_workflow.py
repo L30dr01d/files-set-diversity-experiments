@@ -91,7 +91,7 @@ def test_coverage_experiment_installs_clang():
     guard = "startsWith(matrix.type, 'coverage_')"
     install = (
         "sudo apt-get install -y clang llvm autoconf autotools-dev bison flex "
-        "libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev"
+        "libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev jq"
     )
     assert guard in experiment
     assert "clang" in experiment

@@ -1,6 +1,3 @@
-from pathlib import Path
-
-from experiment_runner.analyzer_coverage import ImageCoverage
 from experiment_runner.config import Experiment
 from panhard_filter import FilterResult
 from panhard_filter.filter import FilterStep
@@ -41,10 +38,9 @@ def test_profiles_each_exact_subset_for_both_analyzers(tmp_path, monkeypatch):
         calls.append((analyzer, tuple(sources)))
         assert profile_dir not in directories
         directories.add(profile_dir)
-        points = frozenset(path.name for path in sources)
         if analyzer == "verilator":
-            points = frozenset({"verilator-only"})
-        return ImageCoverage(points, points, frozenset(), frozenset())
+            return {"line": 98.7, "mcdc": 1.2}
+        return {"line": 20.5 + len(sources), "mcdc": 3.75}
 
     monkeypatch.setattr(module, "timed_panhard_filter", filter_trace)
     output = tmp_path / "output"
@@ -53,9 +49,9 @@ def test_profiles_each_exact_subset_for_both_analyzers(tmp_path, monkeypatch):
     )
     assert calls == expected
     assert len(calls) == 10
-    assert result["larger"]["steps"][-1]["coverage"]["iverilog"] == {"line": 50, "mcdc": 0}
-    assert result["smaller"]["steps"][-1]["coverage"]["iverilog"]["line"] == 200 / 3
-    assert result["larger"]["steps"][-1]["coverage"]["verilator"]["line"] == 100
+    assert result["larger"]["steps"][-1]["coverage"]["iverilog"] == {"line": 22.5, "mcdc": 3.75}
+    assert result["smaller"]["steps"][-1]["coverage"]["iverilog"]["line"] == 22.5
+    assert result["larger"]["steps"][-1]["coverage"]["verilator"] == {"line": 98.7, "mcdc": 1.2}
     assert result["timeout"]["steps"] is None
     assert (output / "sweep.png").stat().st_size
     assert (output / "sweep.svg").stat().st_size

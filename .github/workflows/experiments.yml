@@ -53,7 +53,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.2
       - run: sudo apt-get update && sudo apt-get install -y bc
       - if: startsWith(matrix.type, 'coverage_')
-        run: sudo apt-get install -y clang llvm autoconf autotools-dev bison flex libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev
+        run: sudo apt-get install -y clang llvm autoconf autotools-dev bison flex libfl-dev gperf make gcc g++ cmake python3 help2man libelf-dev jq
       - run: uv sync --extra fastr
       - run: |
           if [[ "$EXPERIMENT_TYPE" == coverage_with_filter* ]]; then

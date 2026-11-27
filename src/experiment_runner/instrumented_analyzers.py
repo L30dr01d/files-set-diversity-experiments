@@ -11,9 +11,6 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from experiment_runner.analyzer_coverage import (
-    ImageCoverage,
-    combine_images,
-    hits_from_llvm_export,
     iverilog_command,
     profile_env,
     verilator_command,
@@ -21,10 +18,8 @@ from experiment_runner.analyzer_coverage import (
 
 DESIGN_TIMEOUT_SECONDS = 120
 ANALYZER_CLEANUP_SECONDS = 5
-RunFile = Callable[
-    [str, Path, Path], ImageCoverage | dict[str, ImageCoverage | None] | None
-]
-RunSet = Callable[[str, Sequence[Path], Path, float], ImageCoverage | None]
+RunFile = Callable[[str, Path, Path], Path]
+RunSet = Callable[[str, Sequence[Path], Path, float], dict[str, float]]
 ANALYZERS = (
     ("iverilog", "Icarus", "C0"),
     ("verilator", "Verilator", "C1"),
@@ -42,17 +37,10 @@ _IMAGE_RELATIVE = {
     "verilator_bin": ("bin/verilator_bin", "share/verilator/bin/verilator_bin"),
 }
 _KNOWN_STEMS = frozenset(_IMAGE_RELATIVE)
-_SIGNATURES: dict[str, str | None] = {}
-NO_HITS = ImageCoverage(
-    line_hits=frozenset(),
-    line_universe=frozenset(),
-    mcdc_hits=frozenset(),
-    mcdc_universe=frozenset(),
-)
 
 
 def _require_llvm() -> None:
-    missing = [name for name in ("llvm-cov", "llvm-profdata") if shutil.which(name) is None]
+    missing = [name for name in ("llvm-cov", "llvm-profdata", "jq") if shutil.which(name) is None]
     if missing:
         raise RuntimeError(f"{' and '.join(missing)} is absent")
 
@@ -157,7 +145,9 @@ def _run_analyzer(
     try:
         # Probes and rejected sources are expected. Their text is not a run failure.
         if timeout is None:
-            subprocess.run(command, env=env, check=False, capture_output=True)
+            subprocess.run(
+                command, env=env, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
             return True
         process = subprocess.Popen(
             command,
@@ -185,156 +175,7 @@ def _run_analyzer(
         return False
 
 
-def _warn_profile(image: Path, detail: str) -> None:
-    text = " ".join(detail.split()) or "profile export failed"
-    print(f"warning: {image}: {text}", file=sys.stderr)
-
-
-def _export_merged(image: Path, profraws: Sequence[Path]) -> ImageCoverage | None:
-    profdata = profraws[0].with_name(f"{image.name}.profdata")
-    print(f"coverage: llvm-profdata {image.name}", file=sys.stderr, flush=True)
-    merge = subprocess.run(
-        [
-            "llvm-profdata",
-            "merge",
-            "-sparse",
-            *[str(path) for path in profraws],
-            "-o",
-            str(profdata),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if merge.returncode != 0:
-        _warn_profile(image, merge.stderr)
-        return None
-    print(f"coverage: llvm-cov {image.name}", file=sys.stderr, flush=True)
-    export_path = profdata.with_name(f"{image.name}.export.json")
-    command = [
-        "llvm-cov",
-        "export",
-        str(image),
-        "-instr-profile",
-        str(profdata),
-        "-format=text",
-        "-skip-functions",
-        "-skip-expansions",
-        "-ignore-filename-regex=^/usr/|obj_dir",
-        "-num-threads=1",
-    ]
-    if os.environ.get("GITHUB_ACTIONS") == "true":
-        command = ["/usr/bin/time", "-v", *command]
-    with open(export_path, "wb") as export_file:
-        export = subprocess.run(
-            command,
-            check=False,
-            stdout=export_file,
-            stderr=subprocess.PIPE,
-        )
-    export_bytes = os.path.getsize(export_path)
-    print(
-        f"coverage: llvm-cov {image.name} export {export_bytes} bytes",
-        file=sys.stderr,
-        flush=True,
-    )
-    raw_stderr = export.stderr
-    if isinstance(raw_stderr, bytes):
-        detail = raw_stderr.decode(errors="replace")
-    else:
-        detail = raw_stderr or ""
-    if export.returncode != 0:
-        _warn_profile(image, detail)
-        export_path.unlink(missing_ok=True)
-        return None
-    if detail:
-        print(detail, file=sys.stderr, end="" if detail.endswith("\n") else "\n", flush=True)
-    try:
-        with open(export_path, encoding="utf-8") as export_file:
-            return hits_from_llvm_export(json.load(export_file))
-    except (json.JSONDecodeError, OSError, KeyError, IndexError, TypeError):
-        _warn_profile(image, detail)
-        return None
-    finally:
-        export_path.unlink(missing_ok=True)
-
-
-def assign_profraws(
-    profraws: Sequence[Path], signatures: Mapping[str, str]
-) -> dict[str, list[Path]]:
-    assigned: dict[str, list[Path]] = {}
-    for profraw in profraws:
-        stem = profraw.stem
-        if stem in _KNOWN_STEMS:
-            image = stem
-        elif stem in signatures:
-            image = signatures[stem]
-        else:
-            continue
-        assigned.setdefault(image, []).append(profraw)
-    return assigned
-
-
-def _calibrate_signature(image: Path) -> str | None:
-    with tempfile.TemporaryDirectory() as directory:
-        profile_dir = Path(directory)
-        # ivl and ivlpp accept -V. --version is read as one short option per letter.
-        for flag in ("-V", "--version"):
-            _clear_profraws(profile_dir)
-            _run_analyzer([str(image), flag], profile_dir)
-            profraws = list(profile_dir.glob("*.profraw"))
-            if len(profraws) == 1:
-                return profraws[0].stem
-    return None
-
-
-def _image_signature(image: Path) -> str | None:
-    key = str(image)
-    if key not in _SIGNATURES:
-        _SIGNATURES[key] = _calibrate_signature(image)
-    return _SIGNATURES[key]
-
-
-def _warn_unmatched(image: Path, names: Sequence[str]) -> None:
-    if names:
-        _warn_profile(image, "unmatched profraw " + " ".join(names))
-    else:
-        _warn_profile(image, "no profraw")
-
-
-def _coverage_from_profiles(
-    profile_dir: Path,
-    stems: tuple[str, ...],
-    images: dict[str, Path],
-    signatures: Mapping[str, str],
-) -> dict[str, ImageCoverage | None] | None:
-    return _coverage_from_raws(sorted(profile_dir.glob("*.profraw")), stems, images, signatures)
-
-
-def _coverage_from_raws(
-    profraws: Sequence[Path],
-    stems: tuple[str, ...],
-    images: dict[str, Path],
-    signatures: Mapping[str, str],
-) -> dict[str, ImageCoverage | None] | None:
-    if not profraws:
-        return None
-    assigned = assign_profraws(profraws, signatures)
-    used = {path for group in assigned.values() for path in group}
-    unmatched = [path.name for path in profraws if path not in used]
-    missing = [stem for stem in stems if not assigned.get(stem)]
-    for stem in missing:
-        _warn_unmatched(images[stem], unmatched)
-    if unmatched and not missing:
-        _warn_unmatched(images[stems[0]], unmatched)
-    exports: dict[str, ImageCoverage | None] = {}
-    for stem in stems:
-        files = assigned.get(stem, [])
-        exports[stem] = _export_merged(images[stem], files) if files else None
-    return exports
-
-
-def _analyzer_images(analyzer: str) -> tuple[Path, dict[str, Path], dict[str, str]]:
+def _analyzer_images(analyzer: str) -> tuple[Path, dict[str, Path]]:
     iverilog, verilator = ensure_analyzers()
     stems = _IMAGE_STEMS.get(analyzer)
     if stems is None:
@@ -346,12 +187,7 @@ def _analyzer_images(analyzer: str) -> tuple[Path, dict[str, Path], dict[str, st
         if image is None:
             raise RuntimeError(f"analyzer build did not install {stem}")
         images[stem] = image
-    signatures: dict[str, str] = {}
-    for stem, image in images.items():
-        signature = _image_signature(image)
-        if signature is not None:
-            signatures[signature] = stem
-    return iverilog if analyzer == "iverilog" else verilator, images, signatures
+    return iverilog if analyzer == "iverilog" else verilator, images
 
 
 def _profile_source(
@@ -367,20 +203,95 @@ def _profile_source(
         return _run_analyzer(command, profile_dir, timeout=timeout)
 
 
-def default_run_file(
-    analyzer: str, source: Path, profile_dir: Path
-) -> dict[str, ImageCoverage | None] | None:
-    executable, images, signatures = _analyzer_images(analyzer)
-    _profile_source(analyzer, source, profile_dir, executable)
-    return _coverage_from_profiles(profile_dir, tuple(images), images, signatures)
+# Keep FAST-R's historical basename, segment, and MC/DC condition IDs.
+_HIT_FILTER = r'''
+input | .data[0].files[] | .filename as $file | select($file | contains("obj_dir") | not)
+| ($file | split("/") | last) as $name
+| (.segments[] | select(.[3] and (.[5] | not) and .[2] > 0)
+   | "L\($name):\(.[0])"),
+  (.mcdc_records[] | . as $record
+   | first(.[] | arrays | select(all(.[]; type == "boolean")))
+   | to_entries[] | select(.value)
+   | "M\($name):\($record[0]):\($record[1]):\(.key)")
+'''
+
+
+def default_run_file(analyzer: str, source: Path, profile_dir: Path) -> Path:
+    executable, images = _analyzer_images(analyzer)
+    hits = profile_dir / "hits.txt"
+    with tempfile.TemporaryDirectory(dir=profile_dir) as directory:
+        scratch = Path(directory)
+        _profile_source(analyzer, source, scratch, executable)
+        raws = sorted(scratch.glob("*.profraw"))
+        if not raws:
+            raise RuntimeError(f"{analyzer} produced no profile for {source}")
+        command = _export_command(list(images.values()), raws, scratch)
+        command.extend(["-skip-functions", "-skip-expansions"])
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            command = ["/usr/bin/time", "-v", *command]
+        with tempfile.TemporaryFile(dir=scratch) as tokens:
+            with subprocess.Popen(command, stdout=subprocess.PIPE) as export:
+                assert export.stdout is not None
+                try:
+                    subprocess.run(["jq", "-nr", _HIT_FILTER], stdin=export.stdout,
+                                   stdout=tokens, check=True)
+                finally:
+                    export.stdout.close()
+                if export.wait():
+                    raise subprocess.CalledProcessError(export.returncode, command)
+            tokens.seek(0)
+            with (scratch / "hits.txt").open("wb") as out:
+                subprocess.run(["sort", "-u"], stdin=tokens, stdout=out,
+                               env={**os.environ, "LC_ALL": "C"}, check=True)
+        (scratch / "hits.txt").replace(hits)
+    return hits
+
+
+def _export_command(images: Sequence[Path], profraws: Sequence[Path], directory: Path) -> list[str]:
+    command = ["llvm-cov", "export", str(images[0])]
+    for image in images[1:]:
+        command.extend(["-object", str(image)])
+    profdata = directory / "merged.profdata"
+    profile_list = directory / "profiles.txt"
+    if profraws:
+        # Large draws can exceed the operating system's command length limit.
+        with profile_list.open("w", encoding="utf-8") as stream:
+            for path in profraws:
+                # An explicit weight preserves commas in the profile filename.
+                stream.write(f"1,{path}\n")
+        inputs = ["-f", str(profile_list)]
+    else:
+        # LLVM accepts empty text profiles, including versions without -empty-profile.
+        profile_list.write_bytes(b"")
+        inputs = [str(profile_list)]
+    subprocess.run(["llvm-profdata", "merge", "-sparse", *inputs, "-o", str(profdata)], check=True)
+    command.extend(["-instr-profile", str(profdata)])
+    return [*command, "-ignore-filename-regex=^/usr/|obj_dir", "-num-threads=1"]
+
+
+def _summary(images: Sequence[Path], profraws: Sequence[Path], directory: Path) -> dict[str, float]:
+    command = [*_export_command(images, profraws, directory), "-summary-only"]
+    fields = (
+        ".data[0].totals | {line: .lines.percent, mcdc: .mcdc.percent} "
+        '| select(all(.[]; type == "number" and . >= 0 and . <= 100))'
+    )
+    with subprocess.Popen(command, stdout=subprocess.PIPE) as export:
+        assert export.stdout is not None
+        try:
+            result = subprocess.run(
+                ["jq", "-ec", fields], stdin=export.stdout, stdout=subprocess.PIPE, check=True,
+            )
+        finally:
+            export.stdout.close()
+        if export.wait():
+            raise subprocess.CalledProcessError(export.returncode, command)
+    return json.loads(result.stdout)
 
 
 def default_run_set(
     analyzer: str, sources: Sequence[Path], profile_dir: Path, timeout: float
-) -> ImageCoverage:
-    if not sources:
-        return NO_HITS
-    executable, images, signatures = _analyzer_images(analyzer)
+) -> dict[str, float]:
+    executable, images = _analyzer_images(analyzer)
     profile_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=profile_dir) as draw:
         profraws: list[Path] = []
@@ -390,11 +301,13 @@ def default_run_set(
             print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
             completed = _profile_source(analyzer, source, raw_dir, executable, timeout=timeout)
             if completed:
-                profraws.extend(sorted(raw_dir.glob("*.profraw")))
+                raws = sorted(raw_dir.glob("*.profraw"))
+                if not raws:
+                    raise RuntimeError(f"{analyzer} produced no profile for {source}")
+                profraws.extend(raws)
             else:
                 print(
                     f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
                     file=sys.stderr, flush=True,
                 )
-        exports = _coverage_from_raws(profraws, tuple(images), images, signatures) or {}
-        return combine_images([coverage for coverage in exports.values() if coverage is not None])
+        return _summary(list(images.values()), profraws, Path(draw))

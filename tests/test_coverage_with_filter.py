@@ -1,141 +1,60 @@
 from pathlib import Path
 
-from experiment_runner.analyzer_coverage import ImageCoverage
 from experiment_runner.config import Experiment
 
 
-def test_failed_profile_export_warns_and_keeps_the_other_image(tmp_path: Path, monkeypatch, capsys) -> None:
+def _mock_file_export(tmp_path, monkeypatch, report, status=0):
+    import sys
+    from experiment_runner import instrumented_analyzers as module
+
+    images = {"ivlpp": tmp_path / "ivlpp", "ivl": tmp_path / "ivl"}
+    monkeypatch.setattr(module, "_analyzer_images", lambda _: (tmp_path / "iverilog", images))
+    monkeypatch.setattr(module, "_profile_source", lambda _tool, _src, directory, _exe: (directory / "a.profraw").touch())
+
+    def command(objects, raws, directory):
+        assert objects == list(images.values())
+        assert raws == [directory / "a.profraw"]
+        script = f"import sys; sys.stdout.write({report!r}); sys.exit({status})"
+        return [sys.executable, "-c", script]
+
+    monkeypatch.setattr(module, "_export_command", command)
+    return module
+
+
+def test_per_input_hits_preserve_selector_ids(tmp_path, monkeypatch):
     import json
+
+    covered = [10, 1, 1, True, True, False]
+    report = {"data": [{"files": [
+        {"filename": "/src/a.cc", "segments": [
+            covered, covered, [11, 1, 0, True, True, False], [12, 1, 1, True, True, True],
+        ], "mcdc_records": [[13, 2, 13, 10, 0, 0, [True, False, True]]]},
+        {"filename": "/obj_dir/gen.cc", "segments": [covered], "mcdc_records": []},
+    ]}]}
+    module = _mock_file_export(tmp_path, monkeypatch, json.dumps(report))
+    path = module.default_run_file("iverilog", tmp_path / "a.sv", tmp_path)
+    assert list(tmp_path.iterdir()) == [path]
+    assert path.read_text().splitlines() == ["La.cc:10", "Ma.cc:13:2:0", "Ma.cc:13:2:2"]
+
+
+def test_completed_adequacy_run_requires_a_raw_profile(tmp_path, monkeypatch):
+    import pytest
+
+    module = _mock_file_export(tmp_path, monkeypatch, "")
+    monkeypatch.setattr(module, "_profile_source", lambda *_: True)
+    with pytest.raises(RuntimeError, match="iverilog produced no profile for .*a.sv"):
+        module.default_run_file("iverilog", tmp_path / "a.sv", tmp_path)
+    assert not list(tmp_path.iterdir())
+
+
+def test_per_input_export_and_extractor_failures_propagate(tmp_path, monkeypatch):
     import subprocess
+    import pytest
 
-    from experiment_runner import instrumented_analyzers as module
-
-    profile_dir = tmp_path / "profiles"
-    profile_dir.mkdir()
-    (profile_dir / "ivl.profraw").write_bytes(b"bad")
-    (profile_dir / "ivlpp.profraw").write_bytes(b"ok")
-    ivl = tmp_path / "lib" / "ivl" / "ivl"
-    ivlpp = tmp_path / "lib" / "ivl" / "ivlpp"
-    ivl.parent.mkdir(parents=True)
-    ivl.write_bytes(b"")
-    ivlpp.write_bytes(b"")
-    payload = {
-        "data": [
-            {
-                "files": [
-                    {
-                        "filename": "parse.cc",
-                        "segments": [[10, 1, 3, True, False, False]],
-                        "mcdc_records": [],
-                    }
-                ]
-            }
-        ]
-    }
-
-    def fake_run(command, **kwargs):
-        parts = [str(part) for part in command]
-        if parts[0] == "llvm-profdata" and str(profile_dir / "ivl.profraw") in parts:
-            return subprocess.CompletedProcess(parts, 1, "", "bad profile\n")
-        if parts[0] == "llvm-profdata":
-            return subprocess.CompletedProcess(parts, 0, "", "")
-        assert "-skip-functions" in parts
-        assert "-skip-expansions" in parts
-        assert "-ignore-filename-regex=^/usr/|obj_dir" in parts
-        assert "-num-threads=1" in parts
-        kwargs["stdout"].write(json.dumps(payload).encode())
-        return subprocess.CompletedProcess(parts, 0, "", "")
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    coverage = module._coverage_from_profiles(
-        profile_dir,
-        ("ivlpp", "ivl"),
-        {"ivl": ivl, "ivlpp": ivlpp},
-        {},
-    )
-    assert coverage == {
-        "ivlpp": ImageCoverage(
-            line_hits=frozenset({"parse.cc:10"}),
-            line_universe=frozenset({"parse.cc:10"}),
-            mcdc_hits=frozenset(),
-            mcdc_universe=frozenset(),
-        ),
-        "ivl": None,
-    }
-    err = capsys.readouterr().err
-    assert f"warning: {ivl}: bad profile\n" in err
-    assert "coverage: llvm-profdata ivl\n" in err
-    export_bytes = len(json.dumps(payload).encode())
-    assert f"coverage: llvm-cov ivlpp export {export_bytes} bytes\n" in err
-
-
-def test_ci_times_the_export_and_reads_the_json_file(tmp_path: Path, monkeypatch, capsys) -> None:
-    import json
-    import subprocess
-
-    from experiment_runner import instrumented_analyzers as module
-
-    monkeypatch.setenv("GITHUB_ACTIONS", "true")
-    image = tmp_path / "verilator_bin"
-    image.write_bytes(b"")
-    profraw = tmp_path / "verilator_bin.profraw"
-    profraw.write_bytes(b"raw")
-    payload = {
-        "data": [
-            {
-                "files": [
-                    {
-                        "filename": "V3Parse.cpp",
-                        "segments": [[4, 1, 2, True, True, False]],
-                        "mcdc_records": [],
-                    },
-                ]
-            }
-        ]
-    }
-    seen: list[list[str]] = []
-
-    def fake_run(command, **kwargs):
-        parts = [str(part) for part in command]
-        seen.append(parts)
-        if parts[0] == "llvm-profdata":
-            return subprocess.CompletedProcess(parts, 0, "", "")
-        kwargs["stdout"].write(json.dumps(payload).encode())
-        return subprocess.CompletedProcess(
-            parts,
-            0,
-            "",
-            b"\tMaximum resident set size (kbytes): 42\n",
-        )
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    coverage = module._export_merged(image, [profraw])
-    assert seen[1][:2] == ["/usr/bin/time", "-v"]
-    assert seen[1][2] == "llvm-cov"
-    assert "-skip-functions" in seen[1]
-    assert coverage is not None
-    assert coverage.line_hits == frozenset({"V3Parse.cpp:4"})
-    assert "Maximum resident set size (kbytes): 42" in capsys.readouterr().err
-    assert not (tmp_path / "verilator_bin.export.json").exists()
-
-
-def test_assign_profraws_maps_learned_signature_and_exact_name() -> None:
-    from experiment_runner import instrumented_analyzers as module
-
-    assign_profraws = getattr(module, "assign_profraws", None)
-    assert assign_profraws is not None
-    assigned = assign_profraws(
-        [
-            Path("1169_0.profraw"),
-            Path("777_0.profraw"),
-            Path("ivlpp.profraw"),
-        ],
-        {"1169_0": "ivl"},
-    )
-    assert assigned == {
-        "ivl": [Path("1169_0.profraw")],
-        "ivlpp": [Path("ivlpp.profraw")],
-    }
+    for report, status in [('{"data":[{"files":[]}]}', 17), ("malformed", 0), ("", 0)]:
+        module = _mock_file_export(tmp_path, monkeypatch, report, status)
+        with pytest.raises(subprocess.CalledProcessError):
+            module.default_run_file("iverilog", tmp_path / "a.sv", tmp_path)
 
 
 def test_each_design_times_out_after_two_minutes() -> None:
@@ -165,17 +84,11 @@ def test_stored_profiles_does_not_apply_the_score_memory_cap(tmp_path: Path, mon
 
     seen = {}
 
-    def fake_call(_fn, _args, *, timeout, memory_bytes=WORKER_MEMORY_BYTES):
+    def fake_call(_fn, _args, *, timeout, memory_bytes=WORKER_MEMORY_BYTES, raise_errors):
         seen["memory_bytes"] = memory_bytes
         seen["timeout"] = timeout
-        return {
-            "verilator_bin": ImageCoverage(
-                frozenset({"V3Parse.cpp:1"}),
-                frozenset({"V3Parse.cpp:1"}),
-                frozenset(),
-                frozenset(),
-            )
-        }
+        assert raise_errors
+        return tmp_path / "hits.txt"
 
     monkeypatch.setattr(module, "call_timed", fake_call)
     module._stored_profiles(
@@ -265,20 +178,17 @@ def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, mon
         assert timeout == 120
         set_runs.append((analyzer, tuple(path.name for path in paths), directory))
         if paths[0].name == "second.sv":
-            return None
+            return {"line": 0.0, "mcdc": 0.0}
         if analyzer == "iverilog" and len(paths) == 1:
-            return _line_coverage(
-                frozenset({"l", "late-image"}), frozenset({"l", "late-image"})
-            )
-        return ImageCoverage(
-            frozenset({"l"}), frozenset({"l", "dormant"} if len(paths) == 2 else {"l"}),
-            frozenset({"m"}), frozenset({"m"}),
-        )
+            return {"line": 66.67, "mcdc": 0.0}
+        return {"line": 50.0, "mcdc": 100.0}
 
     def run_file(analyzer, source, directory):
         assert len(set_runs) == 80
         file_runs.append((analyzer, source.name))
-        return _line_coverage(frozenset({"individual-only"}), frozenset({"individual-only"}))
+        hits = directory / "hits.txt"
+        hits.write_text("Lindividual-only\n")
+        return hits
 
     output = tmp_path / "output"
     results = run_coverage_with_filter(
@@ -298,12 +208,11 @@ def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, mon
             assert first[1] == ("first.sv", "second.sv")
     for tool, budgets in results["budgets"].items():
         assert list(budgets) == ["100", "75", "50", "25"]
-        full_line = 100 / 3 if tool == "iverilog" else 50.0
         filtered = (
-            {"line": 200 / 3, "mcdc": 0.0} if tool == "iverilog"
+            {"line": 66.67, "mcdc": 0.0} if tool == "iverilog"
             else {"line": 50.0, "mcdc": 100.0}
         )
-        assert budgets["100"] == [{"line": full_line, "mcdc": 100.0}] * 10
+        assert budgets["100"] == [{"line": 50.0, "mcdc": 100.0}] * 10
         for budget in ("75", "50", "25"):
             assert budgets[budget] == [filtered, {"line": 0.0, "mcdc": 0.0}] * 5
     assert results["adequacy"] == {
@@ -319,7 +228,7 @@ def test_fresh_budget_draws_measure_both_metrics_and_render_layout(tmp_path, mon
     assert [tick.get_text() for tick in axes[0].get_xticklabels()] == ["100%", "75%", "50%", "25%"]
     assert axes[1].get_ylabel() == "Files kept (%)"
     assert [axes[i].get_ylim() for i in (0, 2, 5, 7)] == [
-        (-3, 53), (-5, 105), (-4, 70), (-5, 105),
+        (-3, 53), (-5, 105), (-4, 71), (-5, 105),
     ]
     assert {axes[i].get_ylim() for i in (1, 3, 4, 6, 8, 9, 11, 13, 14)} == {(-3, 53)}
     assert plotted[1][1] == [[50.0] * 10]
@@ -370,7 +279,7 @@ def test_experiment_requires_one_dataset(tmp_path):
 
 
 def _empty_set_measurement(*_args):
-    return None
+    return {"line": 0.0, "mcdc": 0.0}
 
 
 def test_unknown_draw_name_raises_before_the_figure(tmp_path: Path) -> None:
@@ -387,8 +296,8 @@ def test_unknown_draw_name_raises_before_the_figure(tmp_path: Path) -> None:
     def adequate_fn(_suite: Path, _whitebox: Path) -> list[int]:
         return [1]
 
-    def run_file(_analyzer: str, _source: Path, _profile_dir: Path) -> ImageCoverage:
-        return _line_coverage(frozenset({"line:1"}), frozenset({"line:1"}))
+    def run_file(*_args):
+        raise AssertionError("adequacy ran before budget validation")
 
     with pytest.raises(ValueError, match="unknown kept basename"):
         run_coverage_with_filter(
@@ -411,22 +320,11 @@ def test_missing_profile_adds_no_hits_and_writes_the_figure(tmp_path: Path) -> N
     _calls, reduce_fn = _budget_reduce()
     whiteboxes, _suites, adequate_fn = _recording_adequate()
 
-    def run_file(analyzer: str, source: Path, _profile_dir: Path):
-        if source.name == "second.sv":
-            return None
-        if analyzer == "iverilog":
-            return ImageCoverage(
-                line_hits=frozenset({"only-a"}),
-                line_universe=frozenset({"only-a", "dormant"}),
-                mcdc_hits=frozenset(),
-                mcdc_universe=frozenset(),
-            )
-        return ImageCoverage(
-            line_hits=frozenset({"vonly:1"}),
-            line_universe=frozenset({"vonly:1"}),
-            mcdc_hits=frozenset(),
-            mcdc_universe=frozenset(),
-        )
+    def run_file(analyzer: str, source: Path, directory: Path):
+        hits = directory / "hits.txt"
+        text = "Lonly-a\n" if analyzer == "iverilog" else "Lvonly:1\n"
+        hits.write_text(text if source.name == "first.sv" else "")
+        return hits
 
     output_dir = tmp_path / "output"
     results = run_coverage_with_filter(
@@ -484,51 +382,6 @@ def _forbid_ensure_analyzers(monkeypatch, module) -> None:
     monkeypatch.setattr(module, "ensure_analyzers", fail)
 
 
-def _line_coverage(hits: frozenset[str], universe: frozenset[str]) -> ImageCoverage:
-    return ImageCoverage(
-        line_hits=hits,
-        line_universe=universe,
-        mcdc_hits=frozenset(),
-        mcdc_universe=frozenset(),
-    )
-
-
-def test_calibration_falls_back_to_v_when_version_writes_two_profraws(tmp_path: Path, monkeypatch) -> None:
-    from experiment_runner import instrumented_analyzers as module
-
-    _forbid_ensure_analyzers(monkeypatch, module)
-    flags: list[str] = []
-
-    def fake_run(command, profile_dir: Path) -> None:
-        flags.append(command[-1])
-        if command[-1] == "--version":
-            (profile_dir / "one_0.profraw").write_bytes(b"a")
-            (profile_dir / "two_0.profraw").write_bytes(b"b")
-            return
-        (profile_dir / "from_v_0.profraw").write_bytes(b"c")
-
-    monkeypatch.setattr(module, "_run_analyzer", fake_run)
-    assert module._calibrate_signature(tmp_path / "ivl") == "from_v_0"
-    assert flags == ["-V"]
-
-
-def test_calibration_returns_none_when_every_flag_writes_two_profraws(tmp_path: Path, monkeypatch) -> None:
-    from experiment_runner import instrumented_analyzers as module
-
-    _forbid_ensure_analyzers(monkeypatch, module)
-    flags: list[str] = []
-
-    def fake_run(command, profile_dir: Path) -> None:
-        flags.append(command[-1])
-        tag = "v" if command[-1] == "-V" else "version"
-        (profile_dir / f"{tag}_a.profraw").write_bytes(b"a")
-        (profile_dir / f"{tag}_b.profraw").write_bytes(b"b")
-
-    monkeypatch.setattr(module, "_run_analyzer", fake_run)
-    assert module._calibrate_signature(tmp_path / "ivl") is None
-    assert flags == ["-V", "--version"]
-
-
 def test_analyzer_timeout_stops_child_process(tmp_path: Path) -> None:
     import sys
     import time
@@ -574,216 +427,18 @@ def test_launch_deletes_stale_profraw_before_the_analyzer_runs(tmp_path: Path, m
     assert list(profile_dir.glob("*.profraw")) == []
 
 
-def test_leftover_profraw_warns_with_the_image_and_the_name(tmp_path: Path, monkeypatch, capsys) -> None:
-    import json
-    import subprocess
-
-    from experiment_runner import instrumented_analyzers as module
-
-    _forbid_ensure_analyzers(monkeypatch, module)
-    profile_dir = tmp_path / "profiles"
-    profile_dir.mkdir()
-    (profile_dir / "ivl.profraw").write_bytes(b"ivl")
-    (profile_dir / "ivlpp.profraw").write_bytes(b"ivlpp")
-    (profile_dir / "extra_0.profraw").write_bytes(b"left")
-    ivl = tmp_path / "ivl"
-    ivlpp = tmp_path / "ivlpp"
-    ivl.write_bytes(b"")
-    ivlpp.write_bytes(b"")
-    payload = {
-        "data": [
-            {
-                "files": [
-                    {
-                        "filename": "parse.cc",
-                        "segments": [[10, 1, 3, True, False, False]],
-                        "mcdc_records": [],
-                    }
-                ]
-            }
-        ]
-    }
-
-    def fake_run(command, **kwargs):
-        parts = [str(part) for part in command]
-        if parts[0] == "llvm-profdata":
-            return subprocess.CompletedProcess(parts, 0, "", "")
-        kwargs["stdout"].write(json.dumps(payload).encode())
-        return subprocess.CompletedProcess(parts, 0, "", "")
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    module._coverage_from_profiles(
-        profile_dir,
-        ("ivlpp", "ivl"),
-        {"ivl": ivl, "ivlpp": ivlpp},
-        {},
-    )
-    err = capsys.readouterr().err
-    assert f"warning: {ivlpp}: unmatched profraw extra_0.profraw\n" in err
-    assert "coverage: llvm-cov ivl\n" in err
+def _failed_file(*_):
+    raise RuntimeError("could not extract hit IDs")
 
 
-def test_missing_image_warns_when_the_profile_directory_is_not_empty(tmp_path: Path, monkeypatch, capsys) -> None:
-    import json
-    import subprocess
-
-    from experiment_runner import instrumented_analyzers as module
-
-    _forbid_ensure_analyzers(monkeypatch, module)
-    profile_dir = tmp_path / "profiles"
-    profile_dir.mkdir()
-    (profile_dir / "ivlpp.profraw").write_bytes(b"ok")
-    (profile_dir / "999_0.profraw").write_bytes(b"left")
-    ivl = tmp_path / "ivl"
-    ivlpp = tmp_path / "ivlpp"
-    ivl.write_bytes(b"")
-    ivlpp.write_bytes(b"")
-    payload = {
-        "data": [
-            {
-                "files": [
-                    {
-                        "filename": "parse.cc",
-                        "segments": [[10, 1, 1, True, False, False]],
-                        "mcdc_records": [],
-                    }
-                ]
-            }
-        ]
-    }
-
-    def fake_run(command, **kwargs):
-        parts = [str(part) for part in command]
-        if parts[0] == "llvm-profdata":
-            return subprocess.CompletedProcess(parts, 0, "", "")
-        kwargs["stdout"].write(json.dumps(payload).encode())
-        return subprocess.CompletedProcess(parts, 0, "", "")
-
-    monkeypatch.setattr(module.subprocess, "run", fake_run)
-    exports = module._coverage_from_profiles(
-        profile_dir,
-        ("ivlpp", "ivl"),
-        {"ivl": ivl, "ivlpp": ivlpp},
-        {},
-    )
-    assert exports["ivl"] is None
-    assert exports["ivlpp"].line_hits == frozenset({"parse.cc:10"})
-    err = capsys.readouterr().err
-    assert f"warning: {ivl}: unmatched profraw 999_0.profraw\n" in err
-    assert "coverage: llvm-cov ivlpp\n" in err
-
-
-def test_empty_profile_directory_adds_no_hits_and_no_warning(tmp_path: Path, monkeypatch, capsys) -> None:
-    from experiment_runner import instrumented_analyzers as module
-
-    _forbid_ensure_analyzers(monkeypatch, module)
-
-    def fail(*_args, **_kwargs):
-        raise AssertionError("llvm")
-
-    monkeypatch.setattr(module.subprocess, "run", fail)
-    profile_dir = tmp_path / "empty"
-    profile_dir.mkdir()
-    result = module._coverage_from_profiles(
-        profile_dir,
-        ("ivlpp", "ivl"),
-        {"ivl": tmp_path / "ivl", "ivlpp": tmp_path / "ivlpp"},
-        {},
-    )
-    assert result is None
-    assert capsys.readouterr().err == ""
-
-
-def test_later_failed_export_keeps_the_remembered_universe() -> None:
-    from experiment_runner import coverage_with_filter as module
-
-    ivl = ImageCoverage(
-        line_hits=frozenset({"a:1"}),
-        line_universe=frozenset({"a:1", "a:2"}),
-        mcdc_hits=frozenset({"a:1:0"}),
-        mcdc_universe=frozenset({"a:1:0", "a:1:1"}),
-    )
-    ivlpp = _line_coverage(frozenset(), frozenset())
-    resolved = module._coverages_from_runs(
-        [
-            {"ivl": ivl, "ivlpp": ivlpp},
-            {"ivl": None, "ivlpp": ivlpp},
-        ]
-    )
-    assert resolved[0].line_hits == frozenset({"a:1"})
-    assert resolved[0].mcdc_hits == frozenset({"a:1:0"})
-    assert resolved[1].line_hits == frozenset()
-    assert resolved[1].mcdc_hits == frozenset()
-    assert resolved[1].line_universe == frozenset({"a:1", "a:2"})
-    assert resolved[1].mcdc_universe == frozenset({"a:1:0", "a:1:1"})
-
-
-def test_image_that_never_exports_raises_before_the_figure(tmp_path: Path) -> None:
+def test_adequacy_worker_failure_propagates(tmp_path: Path):
     import pytest
 
-    from experiment_runner.coverage_with_filter import run_coverage_with_filter
+    from experiment_runner.coverage_with_filter import _stored_profiles
 
-    root = tmp_path / "repo"
-    _write_two_sv_files(root)
-    _calls, reduce_fn = _budget_reduce()
-    _whiteboxes, _suites, adequate_fn = _recording_adequate()
-
-    def run_file(analyzer: str, _source: Path, _profile_dir: Path):
-        if analyzer != "iverilog":
-            return _line_coverage(frozenset({"v:1"}), frozenset({"v:1"}))
-        return {
-            "ivl": None,
-            "ivlpp": _line_coverage(frozenset({"pp:1"}), frozenset({"pp:1"})),
-        }
-
-    output_dir = tmp_path / "output"
-    with pytest.raises(RuntimeError, match="ivl"):
-        run_coverage_with_filter(
-            _coverage_experiment(),
-            root,
-            output_dir=output_dir,
-            run_file=run_file,
-            run_set=_empty_set_measurement,
-            reduce_fn=reduce_fn,
-            adequate_fn=adequate_fn,
-        )
-    assert not (output_dir / "coverage.png").is_file()
-
-
-def test_returned_image_map_scores_the_file_that_exported(tmp_path: Path) -> None:
-    from experiment_runner.coverage_with_filter import run_coverage_with_filter
-
-    root = tmp_path / "repo"
-    _write_two_sv_files(root)
-    _calls, reduce_fn = _budget_reduce()
-    _whiteboxes, _suites, adequate_fn = _recording_adequate()
-
-    def run_file(analyzer: str, source: Path, _profile_dir: Path):
-        if analyzer != "iverilog":
-            return _line_coverage(frozenset({"v:1"}), frozenset({"v:1"}))
-        if source.name == "first.sv":
-            return {
-                "ivl": _line_coverage(frozenset({"a:1"}), frozenset({"a:1", "a:2"})),
-                "ivlpp": _line_coverage(frozenset(), frozenset()),
-            }
-        return {
-            "ivl": None,
-            "ivlpp": _line_coverage(frozenset(), frozenset()),
-        }
-
-    output_dir = tmp_path / "output"
-    results = run_coverage_with_filter(
-        _coverage_experiment(),
-        root,
-        output_dir=output_dir,
-        run_file=run_file,
-        run_set=_empty_set_measurement,
-        reduce_fn=reduce_fn,
-        adequate_fn=adequate_fn,
-    )
-    assert results["adequacy"]["iverilog"]["line"] == [1] * 10
-    assert any(rows.splitlines() == ["La:1", ""] for rows in _whiteboxes)
-    assert (output_dir / "coverage.png").is_file()
+    for failed in (_failed_file, lambda *args: _failed_file(*args)):
+        with pytest.raises(RuntimeError, match="extract hit IDs"):
+            _stored_profiles("iverilog", [tmp_path / "a.sv"], failed, tmp_path, 5)
 
 
 def test_compiler_env_builds_icarus_host_tools_with_clang(monkeypatch) -> None:
@@ -802,54 +457,49 @@ def test_compiler_env_builds_icarus_host_tools_with_clang(monkeypatch) -> None:
         assert "-fcoverage-mcdc" in env[name]
 
 
-def test_set_merges_fresh_profiles_once_per_image(tmp_path, monkeypatch):
+def test_set_summarizes_all_fresh_profiles_from_completed_designs(tmp_path, monkeypatch):
     from experiment_runner import instrumented_analyzers as module
 
     images = {stem: tmp_path / stem for stem in ("ivlpp", "ivl")}
-    monkeypatch.setattr(module, "ensure_analyzers", lambda: (tmp_path / "iverilog", tmp_path / "verilator"))
-    monkeypatch.setattr(module, "_find_installed", lambda _prefix, stem: images[stem])
-    monkeypatch.setattr(module, "_image_signature", lambda image: image.name)
+    monkeypatch.setattr(module, "_analyzer_images", lambda _: (tmp_path / "iverilog", images))
     launched = []
 
-    def launch(command, directory, *, timeout):
+    def launch(analyzer, source, directory, executable, *, timeout):
         assert timeout == 120
-        name = Path(command[-1]).name
-        launched.append(name)
+        launched.append(source.name)
         for stem in images:
             (directory / f"{stem}.profraw").touch()
-        return name != "timeout.sv"
+        return source.name != "timeout.sv"
 
-    exports = []
-    coverage = ImageCoverage(frozenset({"l"}), frozenset({"l"}), frozenset({"m"}), frozenset({"m"}))
+    summaries = []
+    coverage = {"line": 12.34, "mcdc": 5.67}
 
-    def export(image, raws):
-        exports.append((image.name, raws))
+    def summary(objects, raws, directory):
+        assert objects == list(images.values())
+        assert all(raw.is_file() and raw.parent.parent == directory for raw in raws)
+        summaries.append([(raw.parent.name, raw.name) for raw in raws])
         return coverage
 
-    monkeypatch.setattr(module, "_run_analyzer", launch)
-    monkeypatch.setattr(module, "_export_merged", export)
-    (tmp_path / "ivl.profraw").touch()
-    assert module.default_run_set(
-        "iverilog", [Path(name) for name in ("a.sv", "timeout.sv", "b.sv")], tmp_path, 120
-    ) == coverage
-    assert launched == ["a.sv", "timeout.sv", "b.sv"]
-    assert [stem for stem, _ in exports] == ["ivlpp", "ivl"]
-    for stem, raws in exports:
-        assert [raw.name for raw in raws] == [f"{stem}.profraw"] * 2
-        assert len({raw.parent for raw in raws}) == 2
-        assert all(raw.parent != tmp_path for raw in raws)
-    assert module.default_run_set("iverilog", [], tmp_path, 120) == module.NO_HITS
-    assert len(exports) == 2
+    monkeypatch.setattr(module, "_profile_source", launch)
+    monkeypatch.setattr(module, "_summary", summary)
+    (tmp_path / "stale.profraw").touch()
+    sources = [Path(name) for name in ("a.sv", "timeout.sv", "b.sv")]
+    assert module.default_run_set("iverilog", sources, tmp_path, 120) == coverage
+    assert launched == [source.name for source in sources]
+    assert summaries == [[(index, name) for index in ("0", "2")
+                          for name in ("ivl.profraw", "ivlpp.profraw")]]
+    for no_data in ([], [Path("timeout.sv")]):
+        assert module.default_run_set("iverilog", no_data, tmp_path, 120) == coverage
+    assert summaries[1:] == [[], []]
 
 
 def test_adequacy_counts_use_goal_and_tool_specific_hits(tmp_path):
     from experiment_runner import coverage_with_filter as module
 
     paths = sorted(_write_two_sv_files(tmp_path).glob("*.sv"))
-    hits = frozenset({"shared"})
-    empty = frozenset()
-    line = _line_coverage(hits, hits)
-    mcdc = ImageCoverage(empty, empty, hits, hits)
+    line, mcdc = tmp_path / "line.txt", tmp_path / "mcdc.txt"
+    line.write_text("Lshared\n")
+    mcdc.write_text("Mshared\n")
     observed = {}
 
     def select(suite, whitebox):
@@ -878,34 +528,3 @@ def test_adequacy_counts_use_goal_and_tool_specific_hits(tmp_path):
     )
     assert counts["verilator"]["line"] == [0] * 10
     assert ("verilator", "line") not in observed
-
-
-def test_stored_profiles_share_universe_and_pack_hits(tmp_path, monkeypatch):
-    from experiment_runner import coverage_with_filter as module
-
-    ids = frozenset(f"source:{i}" for i in range(100))
-    other_ids = frozenset(f"source:{i}" for i in reversed(range(100)))
-    profiles = iter([_line_coverage(ids, ids), _line_coverage(frozenset({"source:2"}), other_ids)])
-    monkeypatch.setattr(module, "call_timed", lambda *args, **kwargs: next(profiles))
-    first, second = module._stored_profiles("tool", [Path("a"), Path("b")], None, tmp_path, 1)
-    assert first.line_universe is second.line_universe
-    assert first.line_hits.bits.bit_count() == 100
-    assert set(second.line_hits) == {"source:2"}
-
-def test_compact_profiles_preserve_whitebox_and_percentages_as_universe_grows():
-    from experiment_runner.analyzer_coverage import combine_images, subset_percents, whitebox_line
-    from experiment_runner.coverage_with_filter import _coverages_from_runs
-
-    empty = frozenset()
-    lines = frozenset(f"a:{i}" for i in range(90))
-    condition = frozenset({"a:1:2:0"})
-    original = [
-        ImageCoverage(lines, lines, empty, condition),
-        ImageCoverage(frozenset({"b:1"}), lines | {"b:1"}, condition, condition),
-    ]
-    packed = _coverages_from_runs({"image": coverage} for coverage in original)
-    assert [whitebox_line(item) for item in packed] == [whitebox_line(item) for item in original]
-    assert combine_images(packed) == combine_images(original)
-    assert subset_percents(packed[1:], combine_images(packed)) == subset_percents(
-        original[1:], combine_images(original)
-    )

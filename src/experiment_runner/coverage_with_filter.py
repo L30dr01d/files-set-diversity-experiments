@@ -1,18 +1,15 @@
 from __future__ import annotations
 
 import sys
-import time
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from heapq import merge
 from math import ceil, floor
 from pathlib import Path
 
-from experiment_runner.analyzer_coverage import ImageCoverage, combine_images
 from experiment_runner.config import Experiment
 from experiment_runner.instrumented_analyzers import (
     ANALYZERS,
     DESIGN_TIMEOUT_SECONDS,
-    NO_HITS,
     RunFile,
     RunSet,
     default_run_file,
@@ -105,135 +102,38 @@ def _default_adequate(suite_path: Path, whitebox_path: Path) -> list[int]:
     return [int(tc_id) for tc_id in selected]
 
 
-def _empty_coverage(donor: ImageCoverage | None) -> ImageCoverage:
-    if donor is None:
-        return ImageCoverage(
-            line_hits=frozenset(),
-            line_universe=frozenset(),
-            mcdc_hits=frozenset(),
-            mcdc_universe=frozenset(),
-        )
-    return ImageCoverage(
-        line_hits=frozenset(),
-        line_universe=donor.line_universe,
-        mcdc_hits=frozenset(),
-        mcdc_universe=donor.mcdc_universe,
-    )
-
-
-@dataclass(eq=False, frozen=True)
-class _PackedHits(Set[str]):
-    bits: int
-    positions: dict[str, int]
-    names: list[str]
-
-    @classmethod
-    def _from_iterable(cls, values: Iterable[str]) -> frozenset[str]:
-        return frozenset(values)
-
-    def __len__(self) -> int:
-        return self.bits.bit_count()
-
-    def __contains__(self, name: object) -> bool:
-        position = self.positions.get(name) if isinstance(name, str) else None
-        return position is not None and bool(self.bits & (1 << position))
-
-    def __iter__(self) -> Iterator[str]:
-        raw = self.bits.to_bytes((self.bits.bit_length() + 7) // 8, "little")
-        for offset, byte in enumerate(raw):
-            while byte:
-                bit = byte & -byte
-                yield self.names[8 * offset + bit.bit_length() - 1]
-                byte ^= bit
-
-
-class _CoverageIndex:
-    def __init__(self) -> None:
-        self.positions: dict[str, int] = {}
-        self.names: list[str] = []
-        self.universes: dict[frozenset[str], frozenset[str]] = {}
-
-    def pack(self, hits: Set[str], universe: Set[str]) -> tuple[_PackedHits, frozenset[str]]:
-        shared = frozenset(universe)
-        shared = self.universes.setdefault(shared, shared)
-        raw = bytearray()
-        for name in hits:
-            position = self.positions.setdefault(name, len(self.names))
-            if position == len(self.names):
-                self.names.append(name)
-            byte, bit = divmod(position, 8)
-            if byte >= len(raw):
-                raw.extend(bytes(byte + 1 - len(raw)))
-            raw[byte] |= 1 << bit
-        return _PackedHits(int.from_bytes(raw, "little"), self.positions, self.names), shared
-
-
-def _coverages_from_runs(recorded: Iterable[object]) -> list[ImageCoverage]:
-    lines, conditions = _CoverageIndex(), _CoverageIndex()
-    remembered: dict[str, ImageCoverage] = {}
-    stems: set[str] = set()
-    combined: list[ImageCoverage | None] = []
-    for item in recorded:
-        if isinstance(item, dict):
-            parts = []
-            for stem, coverage in item.items():
-                stems.add(stem)
-                previous = remembered.get(stem, NO_HITS)
-                if isinstance(coverage, ImageCoverage):
-                    remembered[stem] = combine_images([previous, _empty_coverage(coverage)])
-                    parts.append(coverage)
-                else:
-                    parts.append(previous)
-            item = parts[0] if len(parts) == 1 else combine_images(parts)
-        if isinstance(item, ImageCoverage):
-            combined.append(ImageCoverage(
-                *lines.pack(item.line_hits, item.line_universe),
-                *conditions.pack(item.mcdc_hits, item.mcdc_universe),
-            ))
-        else:
-            combined.append(None)
-    missing = sorted(stems - remembered.keys())
-    if missing:
-        raise RuntimeError(f"profile export failed for {', '.join(missing)}")
-    donor = next((item for item in combined if item is not None), None)
-    return [item if item is not None else _empty_coverage(donor) for item in combined]
-
-
 def _stored_profiles(
     analyzer: str,
     paths: Sequence[Path],
     run_file: RunFile,
     profile_root: Path,
     timeout: float,
-) -> list[ImageCoverage]:
-    def collect() -> Iterator[object]:
-        for source in paths:
-            profile_dir = profile_root / analyzer / source.name
-            profile_dir.mkdir(parents=True, exist_ok=True)
-            print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
-            started = time.monotonic()
-            # llvm-cov export of verilator_bin exceeds the 4 GiB score cap and
-            # returns "LLVM ERROR: out of memory", which drops that image.
-            value = call_timed(
-                run_file,
-                (analyzer, source, profile_dir),
-                timeout=timeout,
-                memory_bytes=None,
-            )
-            if value is None and time.monotonic() - started >= timeout:
-                print(
-                    f"warning: {analyzer} {source.name} timed out after {timeout:g}s",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            yield value
+) -> list[Path | None]:
+    hits = []
+    for source in paths:
+        directory = profile_root / analyzer / source.name
+        directory.mkdir(parents=True, exist_ok=True)
+        print(f"coverage: {analyzer} {source.name}", file=sys.stderr, flush=True)
+        hits.append(call_timed(
+            run_file, (analyzer, source, directory), timeout=timeout,
+            memory_bytes=None, raise_errors=True,
+        ))
+    return hits
 
-    return _coverages_from_runs(collect())
+
+def _tokens(path: Path | None, goal: str, prefix: str) -> Iterator[str]:
+    if path is None:
+        return
+    with path.open(encoding="utf-8") as stream:
+        for row in stream:
+            token = row.rstrip("\n")
+            if goal == "joint" or token.startswith("L" if goal == "line" else "M"):
+                yield token[:1] + prefix + token[1:]
 
 
 def _adequate_counts(
     paths: Sequence[Path],
-    stored: Mapping[str, Sequence[ImageCoverage]],
+    stored: Mapping[str, Sequence[Path | None]],
     adequate_fn: AdequateFn,
     work: Path,
 ) -> dict[str, dict[str, list[int]]]:
@@ -250,15 +150,16 @@ def _adequate_counts(
             has_hits = False
             with whitebox.open("w", encoding="utf-8") as output:
                 for per_file in zip(*sources.values(), strict=True):
-                    tokens = []
-                    for name, coverage in zip(sources, per_file):
-                        prefix = f"{name}:" if tool == "both" else ""
-                        if goal != "mcdc":
-                            tokens.extend(f"L{prefix}{hit}" for hit in coverage.line_hits)
-                        if goal != "line":
-                            tokens.extend(f"M{prefix}{hit}" for hit in coverage.mcdc_hits)
-                    has_hits |= bool(tokens)
-                    print(" ".join(sorted(tokens)), file=output)
+                    groups = (
+                        _tokens(path, goal, f"{name}:" if tool == "both" else "")
+                        for name, path in zip(sources, per_file, strict=True)
+                    )
+                    separator = ""
+                    for token in merge(*groups):
+                        output.write(separator + token)
+                        separator = " "
+                        has_hits = True
+                    output.write("\n")
             draws = []
             for _ in range(FILTER_DRAWS):
                 selected = adequate_fn(suite, whitebox) if has_hits else []
@@ -317,15 +218,12 @@ def run_coverage_with_filter(
     paths = list_test_files(files_dir)
     paths_by_name = {path.name: path for path in paths}
     profile_root = output_dir / "profiles" / dataset_name
-    measured: dict[str, dict[str, list[dict[str, int]]]] = {
+    budgets: dict[str, dict[str, list[dict[str, float]]]] = {
         tool: {} for tool, _, _ in ANALYZERS
-    }
-    universes: dict[str, dict[str, set[str]]] = {
-        tool: {"line": set(), "mcdc": set()} for tool in measured
     }
     for percent in BUDGET_PERCENTS:
         category = str(percent)
-        for samples in measured.values():
+        for samples in budgets.values():
             samples[category] = []
         for draw in range(FILTER_DRAWS):
             selected = paths
@@ -335,29 +233,9 @@ def run_coverage_with_filter(
                     selected = [paths_by_name[name] for name in names]
                 except KeyError as exc:
                     raise ValueError(f"unknown kept basename: {exc.args[0]}") from exc
-            for tool, samples in measured.items():
+            for tool, samples in budgets.items():
                 draw_dir = profile_root / "budgets" / str(percent) / str(draw) / tool
-                coverage = run_set(tool, selected, draw_dir, timeout) or NO_HITS
-                universes[tool]["line"].update(coverage.line_universe)
-                universes[tool]["mcdc"].update(coverage.mcdc_universe)
-                samples[category].append({
-                    "line": len(coverage.line_hits),
-                    "mcdc": len(coverage.mcdc_hits),
-                })
-
-    budgets: dict[str, dict[str, list[dict[str, float]]]] = {}
-    for tool, categories in measured.items():
-        totals = {metric: len(points) for metric, points in universes[tool].items()}
-        budgets[tool] = {
-            category: [
-                {
-                    metric: 100 * hits / totals[metric] if totals[metric] else 0.0
-                    for metric, hits in sample.items()
-                }
-                for sample in samples
-            ]
-            for category, samples in categories.items()
-        }
+                samples[category].append(run_set(tool, selected, draw_dir, timeout))
 
     stored = {
         tool: _stored_profiles(tool, paths, run_file, profile_root, timeout)
