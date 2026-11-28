@@ -232,12 +232,12 @@ def test_cli_dispatches(tmp_path: Path, monkeypatch, ranking):
         encoding="utf-8",
     )
 
-    def fake_run(experiment, _root, *, output_dir, ranking: str):
-        assert ranking == experiment.type.rsplit("_", 1)[1]
-        output_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / f"{experiment.id}.png").write_bytes(b"png")
-        return {}
+    calls = []
+    def fake_run(experiment, _root, *, output_dir, ranking, render):
+        calls.append((ranking, render))
+        return {"ds_one": {"steps": None, "stop_count": None}}
 
-    monkeypatch.setattr("experiment_runner.cli.run_score_for_panhard", fake_run)
+    monkeypatch.setattr("experiment_runner.worker.run_score_for_panhard", fake_run)
     assert main(["run", "ph"], root=root) == 0
-    assert (root / "output" / "ph.png").is_file()
+    assert calls == [(ranking, False)]
+    assert (root / "output" / "ph.html").is_file()

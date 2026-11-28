@@ -1,6 +1,6 @@
 # ci-experiments
 
-Config-driven diversity experiments. Edit `experiments.json`, push, and browse the latest plots on GitHub Pages or download PNG/SVG artifacts from the Actions run.
+Config-driven diversity experiments. Edit `experiments.json`, push, and browse the interactive plots on GitHub Pages. Use the PNG and SVG buttons there to export the current figure.
 
 ```bash
 uv sync --python 3.14 --extra fastr
@@ -29,13 +29,13 @@ Coverage experiments require matching MC/DC-capable Clang and LLVM tools plus `j
 The measure plots use consistent colors for Panhard (blue), Levassor (orange), Poisson (green), and NCD1 (red). Coverage plots use Icarus `C0` and Verilator `C1`. The shared-suite row in `coverage_with_filter` uses `C2`.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
-Each legacy run writes `output/<id>.png` and `output/<id>.svg` from the same plot.
+Every experiment produces an interactive Plotly figure. **Fit to data** adjusts each Y-axis to its observations. **Full range** shows 0–100% on coverage and files-kept panels and 0–1 on normalized score panels. Every worker uploads JSON only, using the same record fields: `experiment`, `cluster`, `dataset`, `column`, and `payload`. The payload holds the measurements specific to that experiment type. The gallery aggregates those records into figures.
 
 ## Clustered experiments
 
 Run `uv run python -m experiment_runner editor` from the repository root. Select an experiment, choose a job, check datasets and tools, then **Apply assignment**. Download the validated JSON and replace `experiments.json` when ready. Each rectangle creates one Actions job. Unassigned combinations are omitted. The editor counts all enabled jobs, including legacy entries, against the 256-job matrix limit.
 
-The first clustered figure, `16_deptycheck`, preserves seven jobs and plots 60 measurements together. CI uploads completed cells before aggregation. A missing worker artifact leaves its planned cells empty. Each figure has its own **Fit to data** and **Full range** controls. Keep the generated HTML and its sibling `plotly.min.js` together.
+The first clustered figure, `16_deptycheck`, plots 60 measurements together across its configured jobs. CI uploads completed cells before aggregation. A missing worker artifact leaves its planned cells empty. Each figure has its own **Fit to data** and **Full range** controls. Keep the generated HTML and its sibling `plotly.min.js` together.
 
 ```bash
 uv run python -m experiment_runner run 16_deptycheck
@@ -52,7 +52,7 @@ The static site in `site/` uses Astro and locally bundled Blades CSS.
 
 ```bash
 mkdir -p site/public/plots
-cp output/*.{png,svg} site/public/plots/
+cp output/*.{html,js} site/public/plots/
 npm --prefix site install
 npm --prefix site test
 npm --prefix site run dev

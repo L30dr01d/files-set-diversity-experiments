@@ -4,7 +4,7 @@ import json
 import re
 from itertools import product
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 KNOWN_TYPES = frozenset(
@@ -49,6 +49,21 @@ class Experiment:
     clusters: tuple[Cluster, ...] = ()
     scorers: tuple[str, ...] = ()
     filter_tool: str | None = None
+
+
+def execution_plan(exp: Experiment) -> Experiment:
+    """A whole-experiment job is one implicit rectangle."""
+    if exp.clusters:
+        return exp
+    tools = exp.tools
+    scorers = ()
+    if exp.type == "score_for_fastr":
+        scorers, tools = tools, FASTR_ALGORITHMS
+    elif exp.type.startswith("coverage_"):
+        tools = ()
+    elif exp.type.startswith("score_for_panhard") and not tools:
+        tools = ("panhard-measure",)
+    return replace(exp, tools=tools, scorers=scorers, clusters=(Cluster(exp.datasets, tools),))
 
 
 def _require_nonempty_str(value: object, field: str) -> str:

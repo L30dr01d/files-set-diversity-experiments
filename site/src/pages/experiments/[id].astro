@@ -20,7 +20,11 @@ const base = import.meta.env.BASE_URL;
   <header>
     <a class="back-link" href={base}>← Experiments</a>
     <h1>{title}</h1>
-    {hasHtml ? <a href={`${base}plots/${id}.html`}>Open interactive figure</a> : <nav aria-label="Download plot">
+    {!disable_reason && hasHtml && <a href={`${base}plots/${id}.html`}>Open interactive figure</a>}
+    {hasHtml && !disable_reason ? <nav aria-label="Download plot">
+      {(['png', 'svg'] as const).map(format => <button type="button" data-export={format} disabled aria-label={`Download ${format.toUpperCase()}`}><DownloadIcon /> {format.toUpperCase()}</button>)}
+      <output data-export-error aria-live="polite"></output>
+    </nav> : <nav aria-label="Download plot">
       {!disable_reason && hasPng
         ? <a href={`${base}plots/${id}.png`} download={`${id}.png`} role="button" class="secondary outline" aria-label="Download PNG"><DownloadIcon /> PNG</a>
         : <button class="secondary outline" disabled title={disable_reason ?? "PNG file was not found"} aria-label="Download PNG"><DownloadIcon /> PNG</button>}
@@ -29,11 +33,11 @@ const base = import.meta.env.BASE_URL;
         : <button disabled title={disable_reason ?? "SVG file was not found"} aria-label="Download SVG"><DownloadIcon /> SVG</button>}
     </nav>}
   </header>
-  <figure class:list={['plot', !disable_reason && hasSvg && 'zoomable-plot']}>
+  <figure class:list={['plot', !disable_reason && !hasHtml && hasSvg && 'zoomable-plot']}>
     {disable_reason
       ? <p>{disable_reason}</p>
       : hasHtml
-      ? <iframe title={title} src={`${base}plots/${id}.html`} style="width:100%;height:100%;border:0" />
+      ? <iframe data-figure-id={id} title={title} src={`${base}plots/${id}.html`} style="width:100%;height:100%;border:0" />
       : hasSvg
       ? <>
           <div class="plot-scroll" role="region" aria-label="Plot image" tabindex="0">
@@ -120,6 +124,35 @@ const base = import.meta.env.BASE_URL;
 </style>
 
 <script>
+  const frame = document.querySelector<HTMLIFrameElement>('iframe[data-figure-id]');
+  if (frame) {
+    type FigureWindow = Window & {
+      Plotly?: { downloadImage: (plot: Element, options: {format: string, filename: string}) => Promise<void> }
+    };
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-export]');
+    const plot = () => frame.contentDocument?.querySelector('.js-plotly-plot');
+    const ready = () => {
+      for (const button of buttons) button.disabled = !plot();
+    };
+    frame.addEventListener('load', ready);
+    ready();
+    for (const button of buttons) button.addEventListener('click', async () => {
+      const chart = plot();
+      const api = (frame.contentWindow as FigureWindow)?.Plotly;
+      if (!chart || !api) return;
+      const status = document.querySelector<HTMLOutputElement>('[data-export-error]')!;
+      status.textContent = '';
+      button.disabled = true;
+      try {
+        await api.downloadImage(chart, {format: button.dataset.export!, filename: frame.dataset.figureId!});
+      } catch {
+        status.textContent = 'Export failed. Please try again.';
+      } finally {
+        ready();
+      }
+    });
+  }
+
   const plot = document.querySelector<HTMLElement>('.zoomable-plot');
   const viewport = plot?.querySelector<HTMLElement>('.plot-scroll');
   const image = viewport?.querySelector('img');

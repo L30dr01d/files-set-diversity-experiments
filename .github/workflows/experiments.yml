@@ -68,29 +68,15 @@ jobs:
             diagnostics_pid=$!
             trap 'kill "$diagnostics_pid" 2>/dev/null || true; wait "$diagnostics_pid" 2>/dev/null || true' EXIT
           fi
-          if [[ -n "$FIGURE_ID" ]]; then
-            uv run python -m experiment_runner worker "$EXPERIMENT_ID" --results-dir results
-          else
-            uv run python -m experiment_runner run "$EXPERIMENT_ID"
-          fi
+          uv run python -m experiment_runner worker "$EXPERIMENT_ID" --results-dir results
         env:
-          FIGURE_ID: ${{ matrix.experiment_id }}
           EXPERIMENT_ID: ${{ matrix.id }}
           EXPERIMENT_TYPE: ${{ matrix.type }}
       - uses: actions/upload-artifact@v7.0.2
-        if: matrix.experiment_id == ''
-        with:
-          name: plot-${{ matrix.id }}
-          path: |
-            output/${{ matrix.id }}.png
-            output/${{ matrix.id }}.svg
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v7.0.2
-        if: ${{ !cancelled() && matrix.experiment_id != '' }}
+        if: ${{ !cancelled() }}
         with:
           name: cells-${{ matrix.id }}
-          path: results/
+          path: results/**/*.json
           if-no-files-found: warn
 
   site:
@@ -105,12 +91,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: actions/configure-pages@v6.0.0
         id: pages
-      - uses: actions/download-artifact@v8.0.2
-        if: needs.experiment.result != 'skipped'
-        with:
-          pattern: plot-*
-          path: site/public/plots
-          merge-multiple: true
       - uses: actions/download-artifact@v8.0.2
         if: needs.experiment.result != 'skipped'
         with:

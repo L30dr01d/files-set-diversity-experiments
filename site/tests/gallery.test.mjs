@@ -95,6 +95,8 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
     assert.equal(interactiveBuild.status, 0, interactiveBuild.stdout + interactiveBuild.stderr);
     const interactivePage = await readFile(join(root, 'dist', 'experiments', 'z_last', 'index.html'), 'utf8');
     assert.equal(elements(interactivePage, 'iframe')[0].src, '/ci-experiments/plots/z_last.html');
+    assert.deepEqual(elements(interactivePage, 'button').filter(b => b['data-export'])
+      .map(b => b['data-export']), ['png', 'svg']);
     await rm(interactive);
     for (const missing of [['svg'], ['png'], ['svg', 'png']]) {
       for (const ext of missing) await rm(join(root, 'public', 'plots', `z_last.${ext}`));

@@ -25,7 +25,7 @@ def ordinary():
 def test_pilot_and_matrix_bounds():
     experiments = load_config(Path(__file__).resolve().parents[1])
     pilot = next(e for e in experiments if e.id == "16_deptycheck")
-    assert [len(list(c.cells())) for c in pilot.clusters] == [10, 20, 8, 8, 4, 6, 4]
+    assert len({cell for cluster in pilot.clusters for cell in cluster.cells()}) == 60
     assert len(pilot.datasets) == 30
     assert pilot.tools == ("panhard-measure", "levassor-measure")
     assert (
@@ -33,7 +33,7 @@ def test_pilot_and_matrix_bounds():
             r.get("experiment_id") == pilot.id
             for r in matrix_payload(experiments)["include"]
         )
-        == 7
+        == len(pilot.clusters)
     )
 
 
@@ -171,3 +171,22 @@ def test_configuration_failure_fails_worker(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, "compute_cell", broken)
     with pytest.raises(ConfigError, match="missing tool"):
         worker.run_worker(exp, 0, tmp_path, tmp_path)
+
+
+def test_files_kept_ranges_use_percentages():
+    from experiment_runner.config import execution_plan, Experiment
+    from experiment_runner.coverage_with_filter import PLOT_ROWS
+
+    exp = execution_plan(Experiment("coverage", "coverage_with_filter", "Coverage", ("data",), ()))
+    data = {
+        "dataset_size": 200,
+        "budgets": {},
+        "adequacy": {tool: {metric: [80, 90] for metric in ("line", "mcdc", "joint")}
+                     for tool, _, _ in PLOT_ROWS},
+    }
+    fig = build_figure(exp, {("data", "coverage"): data})
+    axis = next(key for key in fig.layout if key.startswith("yaxis")
+                and fig.layout[key].title.text == "Files kept (%)")
+    fit, full = fig.layout.updatemenus[0].buttons
+    assert full.args[0][axis + ".range"] == [0, 100]
+    assert fit.args[0][axis + ".range"] == [39.75, 45.25]
