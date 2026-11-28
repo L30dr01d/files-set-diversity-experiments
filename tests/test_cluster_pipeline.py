@@ -69,6 +69,10 @@ def test_split_partial_and_local(tmp_path, monkeypatch):
         assert main(list(map(str, args)), root=tmp_path) == 0
 
     run("worker", "demo--1", "--results-dir", results)
+    preview = (results / "demo--1.html").read_text()
+    assert "first-measure" in preview and "second-measure" not in preview
+    assert "1 missing executions" in preview
+    assert '<script src="plotly.min.js"' not in preview
     exp = load_config(tmp_path)[0]
     cells = collect_cells(exp, results)
     assert cells["b", "second-measure"] is None and cells["b", "first-measure"] is None
@@ -78,6 +82,9 @@ def test_split_partial_and_local(tmp_path, monkeypatch):
     run("aggregate", "--results-dir", results, "--output-dir", tmp_path / "partial")
     assert (tmp_path / "partial/demo.html").is_file()
     run("worker", "demo--2", "--results-dir", results)
+    preview = (results / "demo--2.html").read_text()
+    assert "second-measure" in preview and "first-measure" not in preview
+    assert "0 missing executions" in preview
     figure = build_figure(exp, collect_cells(exp, results))
     assert figure.layout.updatemenus[0].buttons[1].args[0]["yaxis.range"] == [0, 1]
     assert [list(t.y) for t in figure.data] == [[0], [None], [0]]

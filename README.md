@@ -29,7 +29,7 @@ Coverage experiments require matching MC/DC-capable Clang and LLVM tools plus `j
 The measure plots use consistent colors for Panhard (blue), Levassor (orange), Poisson (green), and NCD1 (red). Coverage plots use Icarus `C0` and Verilator `C1`. The shared-suite row in `coverage_with_filter` uses `C2`.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
-Every experiment produces an interactive Plotly figure. **Fit to data** adjusts each Y-axis to its observations. **Full range** shows 0–100% on coverage and files-kept panels and 0–1 on normalized score panels. Every worker uploads JSON only, using the same record fields: `experiment`, `cluster`, `dataset`, `column`, and `payload`. The payload holds the measurements specific to that experiment type. The gallery aggregates those records into figures.
+Every experiment produces an interactive Plotly figure. **Fit to data** adjusts each Y-axis to its observations. **Full range** shows 0–100% on coverage and files-kept panels and 0–1 on normalized score panels. Each job artifact includes a self-contained HTML preview of its assigned measurements. Open `<job-id>.html` offline to inspect the job, including any gaps for failed measurements. The accompanying JSON records use the same record fields: `experiment`, `cluster`, `dataset`, `column`, and `payload`. The payload holds the measurements specific to that experiment type. The gallery aggregates only the JSON records to build the full experiment figure.
 
 ## Clustered experiments
 

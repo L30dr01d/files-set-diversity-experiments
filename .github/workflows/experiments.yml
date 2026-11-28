@@ -76,7 +76,9 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: cells-${{ matrix.id }}
-          path: results/**/*.json
+          path: |
+            results/**/*.json
+            results/${{ matrix.id }}.html
           if-no-files-found: warn
 
   site:

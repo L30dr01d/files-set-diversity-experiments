@@ -8,7 +8,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from experiment_runner.config import ConfigError, Experiment, execution_plan, load_config
-from experiment_runner.plotly_figures import render
+from experiment_runner.plotly_figures import render, render_job_preview
 from experiment_runner.worker import run_worker
 
 
@@ -58,7 +58,10 @@ def main(argv: list[str] | None = None, *, root: Path | None = None) -> int:
             if row is None:
                 raise ConfigError(f"unknown cluster: {args.job_id}")
             exp = next(e for e in experiments if e.id == row.get("experiment_id", row["id"]))
-            run_worker(execution_plan(exp), row.get("cluster_index", 0), root, args.results_dir)
+            plan = execution_plan(exp)
+            index = row.get("cluster_index", 0)
+            run_worker(plan, index, root, args.results_dir)
+            render_job_preview(plan, index, args.results_dir, args.job_id)
             return 0
         if args.command == "aggregate":
             for exp in experiments:

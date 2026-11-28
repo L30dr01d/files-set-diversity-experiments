@@ -9,7 +9,8 @@ def test_workflow_uses_matrix_output_and_uploads_json_cells():
     assert 'python -m experiment_runner worker "$EXPERIMENT_ID"' in TEXT
     assert "EXPERIMENT_ID: ${{ matrix.id }}" in TEXT
     assert "fromJSON(needs.matrix.outputs.matrix)" in TEXT
-    assert "path: results/**/*.json" in TEXT
+    assert "results/**/*.json" in TEXT
+    assert "results/${{ matrix.id }}.html" in TEXT
     assert "name: plot-" not in TEXT
     assert "contents: read" in TEXT
     assert "fail-fast: false" in TEXT

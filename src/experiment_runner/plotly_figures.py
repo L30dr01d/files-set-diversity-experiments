@@ -261,6 +261,14 @@ def _layout(exp, panels, stops, missing, partial):
     return fig
 
 
+def render_job_preview(experiment, index: int, results_dir: Path, job_id: str):
+    results = collect_cells(experiment, results_dir)
+    assigned = {cell: results[cell] for cell in experiment.clusters[index].cells()}
+    build_figure(experiment, assigned).write_html(
+        results_dir / f"{job_id}.html", include_plotlyjs=True, auto_open=False
+    )
+
+
 def render(experiment, results_dir: Path, output_dir: Path):
     cells = collect_cells(experiment, results_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

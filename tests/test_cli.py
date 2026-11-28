@@ -82,7 +82,7 @@ def test_whole_experiment_workers_write_common_records(tmp_path, monkeypatch, ki
     records = [json.loads(file.read_text()) for file in sorted(results.rglob("*.json"))]
     assert records == [dict(experiment="ex1", cluster=0, dataset="ds_one", column=col, payload=None)
                        for col in columns]
-    assert all(p.suffix == ".json" for p in results.rglob("*") if p.is_file())
+    assert [p.name for p in results.rglob("*") if p.is_file() and p.suffix != ".json"] == ["ex1.html"]
     assert main(["aggregate", "--results-dir", str(results), "--output-dir", str(tmp_path/"plots")], root=tmp_path) == 0
     assert (tmp_path/"plots/ex1.html").is_file()
 
