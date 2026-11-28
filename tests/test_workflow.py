@@ -83,7 +83,8 @@ def test_empty_matrix_skips_experiments_but_allows_gallery():
     assert "needs.matrix.result == 'success'" in site
     assert "needs.experiment.result == 'success'" not in site
     assert "if: needs.experiment.result != 'skipped'" in site
-    assert "continue-on-error: true" in site
+    assert "pattern: cells-*" in site
+    assert "experiment_runner aggregate" in site
 
 
 def test_coverage_experiment_installs_clang():

@@ -7,13 +7,13 @@ import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from experiment_runner.config import Experiment
+from experiment_runner.config import Experiment, FASTR_ALGORITHMS
 from experiment_runner.paths import dataset_dir, load_score
 from experiment_runner.plotting import tool_color
 from experiment_runner.score_per_measure import ScoreFn, measure_dataset
 from experiment_runner.timeout import SCORE_TIMEOUT_SECONDS, call_timed
 
-FASTR_ALGOS = ("FAST++", "FAST-CS")
+FASTR_ALGOS = FASTR_ALGORITHMS
 BUDGET_PCTS = tuple(range(100, 0, -5))
 
 ReduceFn = Callable[[Path, str, float], list[str]]
@@ -61,6 +61,8 @@ def run_score_for_fastr(
     monotonic=None,
     timeout: float = SCORE_TIMEOUT_SECONDS,
     output_dir: Path,
+    render: bool = True,
+    algorithms: tuple[str, ...] | None = None,
 ) -> dict:
     if score_fns is None:
         score_fns = {name: load_score(name) for name in experiment.tools}
@@ -73,7 +75,7 @@ def run_score_for_fastr(
         files_dir = dataset_dir(root, dataset_name)
         all_names = list_basenames(files_dir)
         results[dataset_name] = {}
-        for algo in FASTR_ALGOS:
+        for algo in (FASTR_ALGOS if algorithms is None else algorithms):
             results[dataset_name][algo] = {}
             for pct in BUDGET_PCTS:
                 if pct == 100:
@@ -137,6 +139,9 @@ def run_score_for_fastr(
                 print(
                     f"{dataset_name} {algo} pct={pct} kept={len(names)} {values}"
                 )
+
+    if not render:
+        return results
 
     import matplotlib
 

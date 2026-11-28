@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export type Experiment = { id: string; title: string; disable_reason?: string; hasSvg: boolean; hasPng: boolean };
+export type Experiment = { id: string; title: string; disable_reason?: string; hasHtml?: boolean; hasSvg: boolean; hasPng: boolean };
 
 export function loadExperiments(
   configFile = process.env.EXPERIMENTS_FILE || resolve('../experiments.json'),
@@ -30,6 +30,7 @@ export function loadExperiments(
       ...(disable_reason === undefined ? {} : { disable_reason }),
       id,
       title,
+      ...(statSync(resolve(plotsDir, `${id}.html`), { throwIfNoEntry: false })?.isFile() ? { hasHtml: true } : {}),
       hasSvg: statSync(resolve(plotsDir, `${id}.svg`), { throwIfNoEntry: false })?.isFile() ?? false,
       hasPng: statSync(resolve(plotsDir, `${id}.png`), { throwIfNoEntry: false })?.isFile() ?? false,
     };

@@ -7,6 +7,7 @@ from pathlib import Path
 from random import Random
 
 from experiment_runner.config import Experiment
+from experiment_runner.results import subset_digest
 from experiment_runner.paths import dataset_dir, load_score
 from experiment_runner.plotting import tool_color
 from experiment_runner.score_for_fastr import list_basenames, stage_kept
@@ -79,6 +80,7 @@ def _score_steps(
     output_dir: Path,
     dataset_name: str,
     seed: int,
+    fingerprint: bool,
 ) -> list[dict]:
     serialized: list[dict] = []
     for step in raw.steps:
@@ -107,6 +109,8 @@ def _score_steps(
                 "measures": measures,
             }
         )
+        if fingerprint:
+            serialized[-1]["subset_digest"] = subset_digest(step.remaining)
         values = " ".join(
             f"{tool}={_format_value(measures[tool]['value'])}" for tool in tools
         )
@@ -126,6 +130,7 @@ def run_score_for_random_filter(
     monotonic=None,
     timeout: float = SCORE_TIMEOUT_SECONDS,
     output_dir: Path,
+    render: bool = True,
 ) -> dict:
     if score_fns is None:
         score_fns = {name: load_score(name) for name in experiment.tools}
@@ -185,6 +190,7 @@ def run_score_for_random_filter(
                 output_dir=output_dir,
                 dataset_name=dataset_name,
                 seed=seed,
+                fingerprint=not render,
             )
             runs.append(
                 {
@@ -194,6 +200,9 @@ def run_score_for_random_filter(
                 }
             )
         results[dataset_name] = {"runs": runs}
+
+    if not render:
+        return results
 
     import matplotlib
 

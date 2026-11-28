@@ -17,6 +17,7 @@ members = [
     "panhard-measure",
     "poisson-measure",
     "random-filter",
+    "spreadem",
 ]
 
 [[package]]
@@ -30,10 +31,12 @@ dependencies = [
     { name = "ncd1-measure" },
     { name = "panhard-filter" },
     { name = "panhard-measure" },
+    { name = "plotly" },
     { name = "poisson-measure" },
     { name = "psutil" },
     { name = "pytest" },
     { name = "random-filter" },
+    { name = "spreadem" },
 ]
 
 [package.optional-dependencies]
@@ -50,10 +53,12 @@ requires-dist = [
     { name = "ncd1-measure", editable = "tools/ncd1-measure" },
     { name = "panhard-filter", editable = "tools/panhard-filter" },
     { name = "panhard-measure", editable = "tools/panhard-measure" },
+    { name = "plotly", specifier = ">=5" },
     { name = "poisson-measure", editable = "tools/poisson-measure" },
     { name = "psutil", specifier = ">=5.9.5" },
     { name = "pytest", specifier = ">=8" },
     { name = "random-filter", editable = "tools/random-filter" },
+    { name = "spreadem", editable = "spreadem" },
 ]
 provides-extras = ["fastr"]
 
@@ -902,6 +907,19 @@ wheels = [
 ]
 
 [[package]]
+name = "plotly"
+version = "7.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "narwhals" },
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/23/ed969530891a2fd44991f9d4c733ff349d87903b11d75366f1dee607f3ef/plotly-7.2.0.tar.gz", hash = "sha256:0c8299da0556ba9bf18d157f23982d189b627492a6c3cafba9d010b1b6ccb746", size = 6699266, upload-time = "2026-11-24T21:33:02.618Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/43/86c04582164c54476d4dae5c053af82ba70b975f5babbf183ae6e51159b9/plotly-7.2.0-py3-none-any.whl", hash = "sha256:51ed86a5e71b0abfe4df9679a1da0564f9e7e93d5dc7cb35d433256b2cfce854", size = 9702562, upload-time = "2026-11-24T21:33:00.154Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1215,6 +1233,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
 ]
+
+[[package]]
+name = "spreadem"
+version = "0.1.0"
+source = { editable = "spreadem" }
 
 [[package]]
 name = "threadpoolctl"

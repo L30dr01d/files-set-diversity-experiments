@@ -15,11 +15,13 @@ const base = import.meta.env.BASE_URL;
     <p>Latest results of {experiments.length} {experiments.length === 1 ? 'experiment' : 'experiments'}. Select a plot to view it and download the original files.</p>
   </header>
   <section class="experiment-grid" aria-label="Experiment plots">
-    {experiments.map(({ id, title, hasSvg, disable_reason }) => (
+    {experiments.map(({ id, title, hasHtml, hasSvg, disable_reason }) => (
       <a class="experiment-card" href={`${base}experiments/${id}/`}>
         <article>
           {disable_reason
             ? <p class="preview-placeholder">{disable_reason}</p>
+            : hasHtml
+            ? <p class="preview-placeholder">Interactive figure</p>
             : hasSvg
             ? <img src={`${base}plots/${id}.svg`} alt={`Plot: ${title}`} loading="lazy" />
             : <p class="preview-placeholder">SVG preview unavailable</p>}

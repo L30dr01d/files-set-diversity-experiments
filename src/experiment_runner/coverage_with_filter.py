@@ -198,6 +198,7 @@ def run_coverage_with_filter(
     root: Path,
     *,
     output_dir: Path,
+    render: bool = True,
     run_file: RunFile = default_run_file,
     run_set: RunSet = default_run_set,
     reduce_fn: ReduceFn | None = None,
@@ -245,5 +246,7 @@ def run_coverage_with_filter(
         paths, stored, adequate_fn, output_dir / "adequate" / dataset_name
     )
     results = {"budgets": budgets, "adequacy": counts}
+    if not render:
+        return {**results, "dataset_size": len(paths)}
     _write_figure(results, experiment, output_dir, len(paths))
     return results

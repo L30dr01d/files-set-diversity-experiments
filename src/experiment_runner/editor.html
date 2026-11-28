@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+  <title>SpreadEm · Cluster editor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #f5f6f2;
+      color: #192e29;
+      font:
+        16px/1.5 system-ui,
+        sans-serif;
+    }
+    main {
+      max-width: 1150px;
+      margin: 3vh auto;
+      padding: 24px;
+    }
+    section,
+    header {
+      border-bottom: 1px solid #bcc8bf;
+      padding: 16px 0;
+    }
+    header,
+    .toolbar,
+    .columns {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header {
+      justify-content: space-between;
+    }
+    .columns {
+      align-items: flex-start;
+    }
+    fieldset {
+      min-width: 0;
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid #bcc8bf;
+    }
+    label:not([hidden]) {
+      display: block;
+    }
+    input,
+    button,
+    select {
+      font: inherit;
+      max-width: 100%;
+    }
+    button,
+    select {
+      padding: 4px 9px;
+    }
+    button {
+      cursor: pointer;
+    }
+    .scroll {
+      overflow: auto;
+      max-height: 40vh;
+    }
+    table {
+      border-collapse: collapse;
+      background: white;
+      width: 100%;
+    }
+    td,
+    th {
+      border: 1px solid #ccd4cd;
+      padding: 6px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    thead {
+      position: sticky;
+      top: 0;
+      background: #eef2ed;
+    }
+    .selected {
+      background: #d8efdf;
+    }
+    .conflict {
+      background: #ffe0cb;
+    }
+    output {
+      display: block;
+      margin: 10px 0;
+    }
+  </style>
+  <main>
+    <header>
+      <strong>SpreadEm · Cluster editor</strong><span id="count"></span>
+    </header>
+    <section class="toolbar">
+      <label
+        >Experiment
+        <select id="experiment"></select></label
+      ><button id="newExp">New experiment</button
+      ><label>Open JSON <input id="file" type="file" accept=".json" /></label
+      ><button id="save">Download JSON</button>
+    </section>
+    <section class="toolbar">
+      <label>ID <input id="eid" /></label
+      ><label>Title <input id="title" /></label
+      ><label
+        >Type
+        <select id="type"></select
+      ></label>
+    </section>
+    <h2>Job assignments</h2>
+    <div class="scroll"><table id="grid"></table></div>
+    <section>
+      <h2>Edit cluster</h2>
+      <label
+        >Job
+        <select id="job"></select
+      ></label>
+      <p>
+        Choose datasets and tools. Each selected combination runs in this job.
+      </p>
+      <div class="columns">
+        <fieldset id="rows"><legend>Datasets</legend></fieldset>
+        <fieldset id="cols"><legend>Tools</legend></fieldset>
+        <label id="filterLabel" hidden
+          >Random filter scorer
+          <select id="filterTool"></select
+        ></label>
+        <fieldset id="scorers"><legend>Experiment scorers</legend></fieldset>
+      </div>
+      <output id="status" aria-live="polite"></output
+      ><button id="apply">Apply assignment</button>
+      <button id="remove">Remove job</button>
+    </section>
+    <output id="message" role="status"></output>
+  </main>
+  <script type="module">
+    const el = (id) => document.getElementById(id);
+    const catalog = await (await fetch("/catalog")).json();
+    let config = await (await fetch("/config")).json(),
+      index = 0,
+      clusters = [],
+      active = 0;
+    const entry = () => config.experiments[index];
+    const coverage = () => el("type").value.startsWith("coverage_");
+    const fast = () => el("type").value === "score_for_fastr";
+    function options(node, values) {
+      node.replaceChildren(...values.map((v) => new Option(v, v)));
+    }
+    function selected(id) {
+      return [...el(id).querySelectorAll("input:checked")].map((n) => n.value);
+    }
+    function checks(id, values, current) {
+      const box = el(id);
+      while (box.children.length > 1) box.lastChild.remove();
+      for (const v of new Set([...current, ...values])) {
+        const item = document.createElement("label"),
+          input = document.createElement("input");
+        input.type = "checkbox";
+        input.value = v;
+        input.checked = current.includes(v);
+        item.append(input, v);
+        box.append(item);
+      }
+    }
+    function openExperiment() {
+      if (!entry()) {
+        newExperiment();
+        return;
+      }
+      options(
+        el("experiment"),
+        config.experiments.map((e) => e.id),
+      );
+      el("experiment").selectedIndex = index;
+      el("eid").value = entry().id;
+      el("title").value = entry().title;
+      el("type").value = entry().type;
+      clusters = structuredClone(
+        entry().runtime_clusters ?? [
+          {
+            datasets: entry().datasets,
+            tools: fast() ? catalog.algorithms : entry().tools,
+          },
+        ],
+      );
+      options(el("filterTool"), catalog.tools);
+      el("filterTool").value =
+        entry().filter_tool ?? clusters[0]?.tools?.[0] ?? catalog.tools[0];
+      checks("scorers", catalog.tools, entry().scorers ?? entry().tools ?? []);
+      openJob(0);
+    }
+    function openJob(i) {
+      el("save").disabled = false;
+      el("message").textContent = "";
+      active = i;
+      options(el("job"), [
+        ...clusters.map((_, j) => "Job " + (j + 1)),
+        "New job",
+      ]);
+      el("job").selectedIndex = i;
+      const c = clusters[i] ?? { datasets: [], tools: [] };
+      checks("rows", catalog.datasets, c.datasets);
+      checks(
+        "cols",
+        coverage() ? ["coverage"] : fast() ? catalog.algorithms : catalog.tools,
+        coverage() ? ["coverage"] : c.tools,
+      );
+      if (coverage()) el("cols").querySelector("input").disabled = true;
+      el("filterLabel").hidden = el("type").value !== "score_for_random_filter";
+      el("scorers").hidden = !fast();
+      preview();
+    }
+    function preview() {
+      const rows = selected("rows"),
+        cols = selected("cols");
+      const datasets = [
+        ...new Set([...clusters.flatMap((c) => c.datasets), ...rows]),
+      ];
+      const tools = coverage()
+        ? ["coverage"]
+        : [...new Set([...clusters.flatMap((c) => c.tools ?? []), ...cols])];
+      const grid = el("grid");
+      grid.replaceChildren();
+      const head = grid.createTHead().insertRow();
+      for (const text of ["Dataset", ...tools]) {
+        const th = document.createElement("th");
+        th.textContent = text;
+        head.append(th);
+      }
+      const body = grid.createTBody();
+      let conflict = false;
+      for (const d of datasets) {
+        const row = body.insertRow();
+        row.insertCell().textContent = d;
+        for (const t of tools) {
+          const cell = row.insertCell();
+          const owner = clusters.findIndex(
+            (c, i) =>
+              i !== active &&
+              c.datasets.includes(d) &&
+              (coverage() || c.tools.includes(t)),
+          );
+          const picked = rows.includes(d) && cols.includes(t);
+          conflict ||= picked && owner >= 0;
+          cell.className = picked ? (owner >= 0 ? "conflict" : "selected") : "";
+          cell.textContent =
+            picked && owner >= 0
+              ? "Overlaps job " + (owner + 1)
+              : picked
+                ? "Job " + (active + 1)
+                : owner >= 0
+                  ? "Job " + (owner + 1)
+                  : "—";
+        }
+      }
+      el("apply").disabled = conflict || !rows.length || !cols.length;
+      el("remove").disabled = active >= clusters.length;
+      el("status").textContent = conflict
+        ? "Selection overlaps another job."
+        : rows.length * cols.length + " executions in this cluster";
+      el("count").textContent =
+        config.experiments.reduce(
+          (n, e) =>
+            n + (e.disable_reason ? 0 : (e.runtime_clusters?.length ?? 1)),
+          0,
+        ) + " / 256 enabled jobs";
+    }
+    function store() {
+      const e = entry();
+      e.id = el("eid").value;
+      e.title = el("title").value;
+      e.type = el("type").value;
+      e.runtime_clusters = structuredClone(clusters);
+      if (e.type === "score_for_random_filter")
+        e.filter_tool = el("filterTool").value;
+      else delete e.filter_tool;
+      delete e.datasets;
+      delete e.tools;
+      if (fast()) e.scorers = selected("scorers");
+      else delete e.scorers;
+      el("experiment").options[index].text = e.id;
+    }
+    function newExperiment() {
+      config.experiments.push({
+        id: "new_experiment",
+        title: "New experiment",
+        type: "score_per_measure",
+        runtime_clusters: [],
+      });
+      index = config.experiments.length - 1;
+      openExperiment();
+    }
+    options(el("type"), catalog.types);
+    openExperiment();
+    el("experiment").onchange = () => {
+      index = el("experiment").selectedIndex;
+      openExperiment();
+    };
+    el("job").onchange = () => openJob(el("job").selectedIndex);
+    el("type").onchange = () => {
+      clusters = [];
+      openJob(0);
+      markDraft();
+    };
+    el("newExp").onclick = newExperiment;
+    function markDraft() {
+      el("save").disabled = true;
+      preview();
+      el("message").textContent = "Apply your changes before downloading.";
+    }
+    for (const id of ["rows", "cols", "scorers", "eid", "title", "filterTool"])
+      el(id).addEventListener("input", markDraft);
+    el("apply").onclick = () => {
+      clusters[active] = {
+        datasets: selected("rows"),
+        ...(coverage() ? {} : { tools: selected("cols") }),
+      };
+      store();
+      openJob(active);
+    };
+    el("remove").onclick = () => {
+      clusters.splice(active, 1);
+      store();
+      openJob(0);
+    };
+    el("file").onchange = async () => {
+      try {
+        const next = JSON.parse(await el("file").files[0].text());
+        await validate(next);
+        config = next;
+        index = 0;
+        openExperiment();
+      } catch (e) {
+        el("message").textContent = e.message;
+      }
+    };
+    async function validate(value) {
+      const r = await fetch("/validate", {
+        method: "POST",
+        body: JSON.stringify(value),
+      });
+      if (!r.ok) throw Error(await r.text());
+    }
+    el("save").onclick = async () => {
+      try {
+        await validate(config);
+        const url = URL.createObjectURL(
+          new Blob([JSON.stringify(config, null, 2) + "\n"], {
+            type: "application/json",
+          }),
+        );
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "experiments.json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        el("message").textContent = "Downloaded applied assignments.";
+      } catch (e) {
+        el("message").textContent = e.message;
+      }
+    };
+  </script>
+</html>

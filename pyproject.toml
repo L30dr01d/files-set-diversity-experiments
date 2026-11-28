@@ -8,6 +8,8 @@ version = "0.0.0"
 requires-python = ">=3.11"
 dependencies = [
     "pytest>=8",
+    "spreadem",
+    "plotly>=5",
     "psutil>=5.9.5",
     "matplotlib>=3.8",
     "poisson-measure",
@@ -26,10 +28,11 @@ fastr = ["fast-filter[fastr]"]
 where = ["src"]
 
 [tool.uv.workspace]
-members = ["tools/*"]
+members = ["tools/*", "spreadem"]
 exclude = ["tools/__pycache__"]
 
 [tool.uv.sources]
+spreadem = { workspace = true }
 poisson-measure = { workspace = true }
 ncd1-measure = { workspace = true }
 levassor-measure = { workspace = true }
@@ -40,4 +43,7 @@ panhard-filter = { workspace = true }
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["tests", "tools"]
+testpaths = ["tests", "tools", "spreadem/tests"]
+
+[tool.setuptools.package-data]
+experiment_runner = ["editor.html"]

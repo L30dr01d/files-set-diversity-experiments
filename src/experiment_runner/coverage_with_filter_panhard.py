@@ -27,6 +27,7 @@ def run_coverage_with_filter_panhard(
     *,
     ranking: str,
     output_dir: Path,
+    render: bool = True,
     run_set: RunSet = default_run_set,
     filter_fn: FilterFn = filter_paths,
     timeout: float = DESIGN_TIMEOUT_SECONDS,
@@ -60,6 +61,9 @@ def run_coverage_with_filter_panhard(
             })
 
         results[dataset] = {"stop_count": trace.stop_count, "steps": steps}
+
+    if not render:
+        return results
 
     import matplotlib
 

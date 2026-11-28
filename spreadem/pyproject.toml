@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spreadem"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Build a bounded GitHub Actions matrix from explicit job clusters"
+
+[tool.setuptools.packages.find]
+where = ["src"]

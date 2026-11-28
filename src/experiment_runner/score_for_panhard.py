@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from experiment_runner.config import Experiment
+from experiment_runner.results import subset_digest
 from experiment_runner.paths import dataset_dir, load_score
 from experiment_runner.plotting import tool_color
 from experiment_runner.score_for_fastr import list_basenames, stage_kept
@@ -50,6 +51,7 @@ def run_score_for_panhard(
     monotonic=None,
     timeout: float = SCORE_TIMEOUT_SECONDS,
     output_dir: Path,
+    render: bool = True,
 ) -> dict:
     tools = tuple(experiment.tools)
     if score_fns is None:
@@ -105,6 +107,8 @@ def run_score_for_panhard(
                     "measures": measures,
                 }
             )
+            if not render:
+                steps[-1]["subset_digest"] = subset_digest(step.remaining)
             values = " ".join(
                 f"{tool}={measures[tool]['value']}" for tool in tools
             )
@@ -117,6 +121,9 @@ def run_score_for_panhard(
             "stop_count": int(raw.stop_count),
             "steps": steps,
         }
+
+    if not render:
+        return results
 
     import matplotlib
 

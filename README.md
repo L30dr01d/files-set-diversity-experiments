@@ -29,7 +29,22 @@ Coverage experiments require matching MC/DC-capable Clang and LLVM tools plus `j
 The measure plots use consistent colors for Panhard (blue), Levassor (orange), Poisson (green), and NCD1 (red). Coverage plots use Icarus `C0` and Verilator `C1`. The shared-suite row in `coverage_with_filter` uses `C2`.
 Spawned workers are capped at 4 GiB so a runaway score cannot take down the GitHub runner.
 
-Each run writes `output/<id>.png` and `output/<id>.svg` from the same plot.
+Each legacy run writes `output/<id>.png` and `output/<id>.svg` from the same plot.
+
+## Clustered experiments
+
+Run `uv run python -m experiment_runner editor` from the repository root. Select an experiment, choose a job, check datasets and tools, then **Apply assignment**. Download the validated JSON and replace `experiments.json` when ready. Each rectangle creates one Actions job. Unassigned combinations are omitted. The editor counts all enabled jobs, including legacy entries, against the 256-job matrix limit.
+
+The first clustered figure, `16_deptycheck`, preserves seven jobs and plots 60 measurements together. CI uploads completed cells before aggregation. A missing worker artifact leaves its planned cells empty. Each figure has its own **Fit to data** and **Full range** controls. Keep the generated HTML and its sibling `plotly.min.js` together.
+
+```bash
+uv run python -m experiment_runner run 16_deptycheck
+# Or exercise a single cluster and inspect the partial figure:
+uv run python -m experiment_runner worker 16_deptycheck--1 --results-dir results
+uv run python -m experiment_runner aggregate --results-dir results --output-dir output
+```
+
+Use a fresh results directory for each plan/run. For clustered FASTR experiments, columns select algorithms and the experiment-level scorers apply to every budget. Coverage uses a single column. Random-filter configurations can set `filter_tool` to keep the same selection rule across clusters.
 
 ## Experiment gallery
 

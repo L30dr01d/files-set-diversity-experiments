@@ -89,6 +89,13 @@ test('Astro builds an SVG gallery, full plot pages, and downloads at root and re
         }
       }
     }
+    const interactive = join(root, 'public', 'plots', 'z_last.html');
+    await writeFile(interactive, '<!doctype html><title>Demo</title>');
+    const interactiveBuild = build('/ci-experiments/');
+    assert.equal(interactiveBuild.status, 0, interactiveBuild.stdout + interactiveBuild.stderr);
+    const interactivePage = await readFile(join(root, 'dist', 'experiments', 'z_last', 'index.html'), 'utf8');
+    assert.equal(elements(interactivePage, 'iframe')[0].src, '/ci-experiments/plots/z_last.html');
+    await rm(interactive);
     for (const missing of [['svg'], ['png'], ['svg', 'png']]) {
       for (const ext of missing) await rm(join(root, 'public', 'plots', `z_last.${ext}`));
       for (const base of ['/', '/ci-experiments/']) {

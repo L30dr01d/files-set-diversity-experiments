@@ -255,3 +255,16 @@ def test_score_timeout_is_null(tmp_path: Path) -> None:
         output_dir=tmp_path / "output",
     )
     assert result["ds_one"]["FAST++"][100]["measures"]["hang-measure"]["value"] is None
+
+
+def test_cluster_keeps_one_algorithm_and_all_budgets(tmp_path):
+    _write_dataset(tmp_path, "ds", n=4)
+    result = run_score_for_fastr(
+        _experiment("ds"), tmp_path, output_dir=tmp_path / "scratch",
+        score_fns={"fake-measure":lambda _: .2, "other-measure":lambda _: .3},
+        reduce_fn=fake_reduce, algorithms=("FAST-CS",), render=False,
+    )
+    assert list(result["ds"]) == ["FAST-CS"]
+    assert list(result["ds"]["FAST-CS"]) == list(BUDGET_PCTS)
+    assert all(set(b["measures"]) == {"fake-measure","other-measure"}
+               for b in result["ds"]["FAST-CS"].values())

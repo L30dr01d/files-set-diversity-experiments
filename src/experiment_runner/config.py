@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from itertools import product
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +26,18 @@ class ConfigError(ValueError):
     pass
 
 
+FASTR_ALGORITHMS = ("FAST++", "FAST-CS")
+
+
+@dataclass(frozen=True)
+class Cluster:
+    datasets: tuple[str, ...]
+    tools: tuple[str, ...]
+
+    def cells(self):
+        return product(self.datasets, self.tools or ("coverage",))
+
+
 @dataclass(frozen=True)
 class Experiment:
     id: str
@@ -32,6 +46,9 @@ class Experiment:
     datasets: tuple[str, ...]
     tools: tuple[str, ...]
     disable_reason: str | None = None
+    clusters: tuple[Cluster, ...] = ()
+    scorers: tuple[str, ...] = ()
+    filter_tool: str | None = None
 
 
 def _require_nonempty_str(value: object, field: str) -> str:
@@ -60,6 +77,10 @@ def load_experiments(path: Path) -> list[Experiment]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ConfigError(f"invalid experiments.json: {exc}") from exc
+    return parse_config(payload)
+
+
+def parse_config(payload: dict) -> list[Experiment]:
     if not isinstance(payload, dict) or not isinstance(payload.get("experiments"), list):
         raise ConfigError("missing experiments")
     experiments: list[Experiment] = []
@@ -74,13 +95,53 @@ def load_experiments(path: Path) -> list[Experiment]:
         exp_type = _require_nonempty_str(raw.get("type"), "type")
         if exp_type not in KNOWN_TYPES:
             raise ConfigError(f"unknown type: {exp_type}")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", exp_id):
+            raise ConfigError(f"invalid experiment id: {exp_id}")
+        filter_tool = None
+        clusters = []
+        scorers = ()
+        if "runtime_clusters" in raw:
+            if "datasets" in raw or "tools" in raw:
+                raise ConfigError("choose either runtime_clusters or legacy datasets/tools")
+            definitions = raw["runtime_clusters"]
+            if not isinstance(definitions, list) or not definitions:
+                raise ConfigError("missing runtime_clusters")
+            cells = set()
+            for definition in definitions:
+                if not isinstance(definition, dict):
+                    raise ConfigError("invalid cluster")
+                datasets = _require_name_tuple(definition.get("datasets"), "datasets")
+                coverage = exp_type.startswith("coverage_")
+                tools = _require_name_tuple(definition.get("tools", []), "tools", allow_empty=coverage)
+                if coverage and tools:
+                    raise ConfigError("coverage clusters take only datasets")
+                cluster = Cluster(datasets, tools)
+                for cell in cluster.cells():
+                    if cell in cells:
+                        raise ConfigError(f"{exp_id}: overlapping assignment {cell}")
+                    cells.add(cell)
+                clusters.append(cluster)
+            datasets = tuple(dict.fromkeys(d for c in clusters for d in c.datasets))
+            tools = tuple(dict.fromkeys(t for c in clusters for t in c.tools))
+            if exp_type == "score_for_random_filter":
+                filter_tool = _require_nonempty_str(raw.get("filter_tool", tools[0]), "filter_tool")
+            if exp_type == "score_for_fastr":
+                scorers = _require_name_tuple(raw.get("scorers"), "scorers")
+                if set(tools).difference(FASTR_ALGORITHMS):
+                    raise ConfigError("unknown FASTR algorithm")
+        else:
+            datasets = _require_name_tuple(raw.get("datasets"), "datasets")
+            tools = _require_name_tuple(raw.get("tools"), "tools", allow_empty=True)
         experiments.append(
             Experiment(
                 id=exp_id,
                 type=exp_type,
                 title=_require_nonempty_str(raw.get("title"), "title"),
-                datasets=_require_name_tuple(raw.get("datasets"), "datasets"),
-                tools=_require_name_tuple(raw.get("tools"), "tools", allow_empty=True),
+                datasets=datasets,
+                tools=tools,
+                clusters=tuple(clusters),
+                scorers=scorers,
+                filter_tool=filter_tool,
                 disable_reason=(
                     _require_nonempty_str(raw["disable_reason"], "disable_reason")
                     if "disable_reason" in raw else None
@@ -93,10 +154,19 @@ def load_experiments(path: Path) -> list[Experiment]:
 def validate_paths(root: Path, experiments: Sequence[Experiment]) -> None:
     for exp in experiments:
         for name in exp.datasets:
+            if Path(name).name != name or name in (".", ".."):
+                raise ConfigError(f"invalid dataset: {name}")
             path = root / "datasets" / name
             if not path.is_dir():
                 raise ConfigError(f"dataset directory missing: {name}")
-        for name in exp.tools:
+        names = exp.scorers or exp.tools
+        if exp.filter_tool:
+            names = (*names, exp.filter_tool)
+        for name in names:
+            if exp.clusters and not name.endswith("-measure"):
+                raise ConfigError(f"unknown scoring tool: {name}")
+            if Path(name).name != name or name in (".", ".."):
+                raise ConfigError(f"invalid tool: {name}")
             path = root / "tools" / name
             if not path.is_dir():
                 raise ConfigError(f"tool directory missing: {name}")
